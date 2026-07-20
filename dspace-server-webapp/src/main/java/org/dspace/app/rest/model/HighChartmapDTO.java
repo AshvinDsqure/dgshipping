@@ -1,0 +1,66 @@
+/**
+ * The contents of this file are subject to the license and copyright
+ * detailed in the LICENSE and NOTICE files at the root of the source
+ * tree and available online at
+ *
+ * http://www.dspace.org/license/
+ */
+package org.dspace.app.rest.model;
+
+/**
+ *
+ * @author root
+ */
+public class HighChartmapDTO {
+
+    private String name;
+    private float lat;
+    private float lon;
+    private String country;
+    
+    public HighChartmapDTO() {
+    	super();
+    }
+
+    public HighChartmapDTO(String name, float lat, float lon, String country) {
+        this.name = name;
+        this.lat = lat;
+        this.lon = lon;
+        this.country = country;
+    }
+    
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public float getLat() {
+        return lat;
+    }
+
+    public void setLat(float lat) {
+        this.lat = lat;
+    }
+
+    public float getLon() {
+        return lon;
+    }
+
+    public void setLon(float lon) {
+        this.lon = lon;
+    }
+
+    public String getCountry() {
+        return country;
+    }
+
+    public void setCountry(String country) {
+        this.country = country;
+    }
+            
+            
+            
+}

@@ -1,0 +1,14 @@
+# Project exclude paths
+/dspace/modules/additions/target/
+/dspace/modules/server/target/
+/dspace/modules/target/
+/dspace/target/
+/dspace-api/target/
+/dspace-iiif/target/
+/dspace-oai/target/
+/dspace-rdf/target/
+/dspace-server-webapp/target/
+/dspace-services/target/
+/dspace-sword/target/
+/dspace-swordv2/target/
+/target/

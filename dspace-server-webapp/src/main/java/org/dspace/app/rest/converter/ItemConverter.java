@@ -1,0 +1,258 @@
+/**
+ * The contents of this file are subject to the license and copyright
+ * detailed in the LICENSE and NOTICE files at the root of the source
+ * tree and available online at
+ *
+ * http://www.dspace.org/license/
+ */
+package org.dspace.app.rest.converter;
+
+import java.sql.SQLException;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.Logger;
+import org.dspace.app.rest.model.ItemRest;
+import org.dspace.app.rest.model.MetadataValueList;
+import org.dspace.app.rest.projection.Projection;
+import org.dspace.content.*;
+import org.dspace.content.service.ItemService;
+import org.dspace.content.service.WorkflowProcessService;
+import org.dspace.core.Context;
+import org.dspace.discovery.IndexableObject;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+/**
+ * This is the converter from/to the Item in the DSpace API data model and the
+ * REST data model
+ *
+ * @author Andrea Bollini (andrea.bollini at 4science.it)
+ */
+@Component
+public class ItemConverter
+        extends DSpaceObjectConverter<Item, ItemRest>
+        implements IndexableObjectConverter<Item, ItemRest> {
+    @Autowired
+    ModelMapper modelMapper;
+    @Autowired
+    private ItemService itemService;
+
+    @Autowired
+    private WorkflowProcessService workflowProcessService;
+
+    private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(ItemConverter.class);
+
+    @Override
+    public ItemRest convert(Item obj, Projection projection) {
+        ItemRest item = super.convert(obj, projection);
+        item.setInArchive(obj.isArchived());
+        item.setDiscoverable(obj.isDiscoverable());
+        item.setWithdrawn(obj.isWithdrawn());
+        item.setLastModified(obj.getLastModified());
+        List<MetadataValue> entityTypes =
+            itemService.getMetadata(obj, "dspace", "entity", "type", Item.ANY, false);
+        if (CollectionUtils.isNotEmpty(entityTypes) && StringUtils.isNotBlank(entityTypes.get(0).getValue())) {
+            item.setEntityType(entityTypes.get(0).getValue());
+        }
+        return item;
+    }
+    public ItemRest convertNameOnly(Item obj, Projection projection) {
+        ItemRest item = super.convert(obj, projection);
+
+        return item;
+    }
+//    public ItemRest convertNameOnly1(Context context,Item obj, Projection projection) {
+//        ItemRest item = super.convert(obj, projection);
+//        try {
+//            WorkflowProcess wp = workflowProcessService.getByItem(context, obj.getID());
+//            if(wp!=null) {
+//                List<WorkflowProcessEperson> owners = wp.getWorkflowProcessEpeople().stream().filter(WorkflowProcessEperson::getOwner).collect(Collectors.toList());
+//                String currentRecipients = owners.stream()
+//                        .map(o -> {
+//                            String name = o.getePerson() != null ? o.getePerson().getFullName() : null;
+//                            if (name == null) return null;
+//                            boolean isCC = Optional.ofNullable(o.getUsertype())
+//                                    .map(t -> "cc".equalsIgnoreCase(t.getPrimaryvalue()))
+//                                    .orElse(false);
+//                            return isCC ? name + "(cc)" : name;
+//                        })
+//                        .filter(Objects::nonNull)
+//                        .collect(Collectors.joining(","));
+//                item.setCurrentRecipients(currentRecipients);
+//            }else{
+//                System.out.println("No workflow process found for item with id: " + obj.getID());
+//            }
+//        }catch (SQLException e){
+//            System.out.println("Error while retrieving workflow process for item with id: " + obj.getID());
+//            e.printStackTrace();
+//        }catch (Exception e)
+//        {
+//            e.printStackTrace();
+//            System.out.println("Error while retrieving workflow process for item with id: " + obj.getID());
+//
+//        }
+//        return item;
+//    }
+
+    public ItemRest convertNameOnly1(Context context, Item obj, Projection projection) {
+        Context lookupContext = null;
+        try {
+            lookupContext = new Context(Context.Mode.READ_ONLY);
+
+            // Re-load item in the fresh session — fixes LazyInitializationException
+            Item freshItem = itemService.find(lookupContext, obj.getID());
+
+            if (freshItem == null) {
+                log.warn("Item not found in fresh context: {}", obj.getID());
+                return null;
+            }
+            // Now convert using freshItem (attached to lookupContext session)
+            ItemRest item = super.convert(freshItem, projection);
+            // Workflow lookup — same fresh session
+            WorkflowProcess wp = workflowProcessService.getByItem(lookupContext, freshItem.getID());
+           String firstUser = null;
+            if (wp != null) {
+                String createdby = wp.getWorkflowProcessEpeople()
+                        .stream()
+                        .filter(d -> d.getIndex() == 0)
+                        .map(o -> o.getePerson() != null ? o.getePerson().getFullName() : null)
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElse(null);
+                if(createdby !=null) {
+                    firstUser=createdby;
+                    item.setUploadedby(createdby);
+                }
+                List<WorkflowProcessEperson> owners = wp.getWorkflowProcessEpeople()
+                        .stream()
+                        .filter(WorkflowProcessEperson::getOwner)
+                        .collect(Collectors.toList());
+                String currentRecipients = owners
+                        .stream().filter(d->d.getePerson()!=null)
+                        .map(o -> o.getePerson() != null ? o.getePerson().getFullName() : null)
+                        .filter(Objects::nonNull)
+                        .findFirst()
+                        .orElse(null);
+
+                if (currentRecipients != null && !currentRecipients.trim().isEmpty()) {
+                    item.setCurrentRecipients(currentRecipients);
+                } else {
+                    if(firstUser!=null) {
+                        item.setCurrentRecipients(firstUser);
+                    }
+                    else{
+                        System.out.println("::::::::::not");
+                    }
+                }
+                if(wp.getWorkFlowProcessHistory()!=null){
+                    System.out.println("Workflow history ");
+                    //Create
+                    //Forward
+                    //Backward
+                    //Rejected
+                    //Callback and Previous Note discarded
+                    List<UUID> actionIds = Arrays.asList(
+                            UUID.fromString("8b1b1704-ceef-4aca-96d2-dabeb79dcf6b"),
+                            UUID.fromString("ae618c82-3447-4cc2-bd60-5f8ff5a425b1"),
+                            UUID.fromString("b6eaf5f7-6c73-41f9-b215-e6e0bb30f13e"),
+                            UUID.fromString("cf8c2786-ba50-4934-811d-f0bd90494f45"),
+                            UUID.fromString("206863dc-ab5f-40f2-906a-6aa5ae051270")
+                    );
+
+                    Date maxActionDate = wp.getWorkFlowProcessHistory().stream()
+                            .filter(h -> h.getAction() != null
+                                    && actionIds.contains(h.getAction().getID()))
+
+                            .map(WorkFlowProcessHistory::getActionDate)
+
+                            .filter(Objects::nonNull)
+
+                            .max(Date::compareTo)
+
+                            .orElse(null);
+
+                    if(maxActionDate != null){
+                        item.setRecivedDate(maxActionDate);
+                    }else{
+                        System.out.println("No valid action date found in workflow history for item with id: " + obj.getID());
+                    }
+                }
+
+            } else {
+                log.info("No workflow process found for item with id: {}", obj.getID());
+            }
+            return item;
+        } catch (Exception e) {
+            log.error("Error converting item {}", obj.getID(), e);
+            return null; // or return a minimal ItemRest fallback
+        } finally {
+            if (lookupContext != null) {
+                lookupContext.abort(); // always release the session
+            }
+        }
+    }
+
+    public Item convert(ItemRest obj,Context context) throws SQLException {
+        Item item=null;
+        if(obj.getUuid() !=null && obj.getUuid().trim().length() !=0){
+            item=itemService.find(context, UUID.fromString(obj.getUuid()));
+        }
+       return item;
+    }
+
+    /**
+     * Retrieves the metadata list filtered according to the hidden metadata configuration
+     * When the context is null, it will return the metadatalist as for an anonymous user
+     * Overrides the parent method to include virtual metadata
+     * @param context The context
+     * @param obj     The object of which the filtered metadata will be retrieved
+     * @return A list of object metadata (including virtual metadata) filtered based on the the hidden metadata
+     * configuration
+     */
+    @Override
+    public MetadataValueList getPermissionFilteredMetadata(Context context, Item obj) {
+        List<MetadataValue> fullList = itemService.getMetadata(obj, Item.ANY, Item.ANY, Item.ANY, Item.ANY, true);
+        List<MetadataValue> returnList = new LinkedList<>();
+        try {
+            if (obj.isWithdrawn() && (Objects.isNull(context) ||
+                                      Objects.isNull(context.getCurrentUser()) || !authorizeService.isAdmin(context))) {
+                return new MetadataValueList(new ArrayList<MetadataValue>());
+            }
+            if (context != null && authorizeService.isAdmin(context)) {
+                return new MetadataValueList(fullList);
+            }
+            for (MetadataValue mv : fullList) {
+                MetadataField metadataField = mv.getMetadataField();
+                if (!metadataExposureService
+                        .isHidden(context, metadataField.getMetadataSchema().getName(),
+                                  metadataField.getElement(),
+                                  metadataField.getQualifier())) {
+                    returnList.add(mv);
+                }
+            }
+        } catch (SQLException e) {
+            log.error("Error filtering item metadata based on permissions", e);
+        }
+        return new MetadataValueList(returnList);
+    }
+
+    @Override
+    protected ItemRest newInstance() {
+        return new ItemRest();
+    }
+
+    @Override
+    public Class<Item> getModelClass() {
+        return Item.class;
+    }
+
+    @Override
+    public boolean supportsModel(IndexableObject idxo) {
+        return idxo.getIndexedObject() instanceof Item;
+    }
+}

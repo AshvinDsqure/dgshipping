@@ -1,0 +1,315 @@
+/**
+ * The contents of this file are subject to the license and copyright
+ * detailed in the LICENSE and NOTICE files at the root of the source
+ * tree and available online at
+ *
+ * http://www.dspace.org/license/
+ */
+package org.dspace.app.rest.repository;
+
+import static java.util.stream.Collectors.toList;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import javax.servlet.http.HttpServletRequest;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.dspace.app.rest.Parameter;
+import org.dspace.app.rest.SearchRestMethod;
+import org.dspace.app.rest.converter.GroupConverter;
+import org.dspace.app.rest.converter.MetadataConverter;
+import org.dspace.app.rest.converter.WorkFlowProcessMasterValueConverter;
+import org.dspace.app.rest.exception.GroupNameNotProvidedException;
+import org.dspace.app.rest.exception.RepositoryMethodNotImplementedException;
+import org.dspace.app.rest.exception.UnprocessableEntityException;
+import org.dspace.app.rest.model.GroupRest;
+import org.dspace.app.rest.model.ItemRest;
+import org.dspace.app.rest.model.patch.Patch;
+import org.dspace.app.rest.projection.Projection;
+import org.dspace.authorize.AuthorizeException;
+import org.dspace.content.DSpaceObject;
+import org.dspace.content.Item;
+import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
+import org.dspace.eperson.Group;
+import org.dspace.eperson.service.GroupService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Component;
+
+/**
+ * This is the repository responsible to manage Group Rest object
+ *
+ * @author Andrea Bollini (andrea.bollini at 4science.it)
+ */
+
+@Component(GroupRest.CATEGORY + "." + GroupRest.NAME)
+public class GroupRestRepository extends DSpaceObjectRestRepository<Group, GroupRest> {
+    @Autowired
+    GroupService gs;
+
+    @Autowired
+    GroupConverter groupConverter;
+    @Autowired
+    WorkFlowProcessMasterValueConverter workFlowProcessMasterValueConverter;
+
+
+    @Autowired
+    GroupRestRepository(GroupService dsoService) {
+        super(dsoService);
+        this.gs = dsoService;
+    }
+
+    @Autowired
+    MetadataConverter metadataConverter;
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    protected GroupRest createAndReturn(Context context)
+            throws AuthorizeException, RepositoryMethodNotImplementedException {
+
+        HttpServletRequest req = getRequestService().getCurrentRequest().getHttpServletRequest();
+        ObjectMapper mapper = new ObjectMapper();
+        GroupRest groupRest;
+
+        try {
+            groupRest = mapper.readValue(req.getInputStream(), GroupRest.class);
+        } catch (IOException excIO) {
+            throw new UnprocessableEntityException("error parsing the body ..." + excIO.getMessage());
+        }
+
+        if (isBlank(groupRest.getName())) {
+            throw new GroupNameNotProvidedException();
+        }
+
+        Group group;
+        try {
+            group = gs.create(context);
+            gs.setName(group, groupRest.getName());
+            if(groupRest.getGrouptypeRest()!=null){
+             group.setGrouptype(workFlowProcessMasterValueConverter.convert(context,groupRest.getGrouptypeRest()));
+            }
+            gs.update(context, group);
+            metadataConverter.setMetadata(context, group, groupRest.getMetadata());
+        } catch (SQLException excSQL) {
+            throw new RuntimeException(excSQL.getMessage(), excSQL);
+        }
+
+        return converter.toRest(group, utils.obtainProjection());
+    }
+
+    @Override
+    @PreAuthorize("hasPermission(#id, 'GROUP', 'READ')")
+    public GroupRest findOne(Context context, UUID id) {
+        Group group = null;
+        try {
+            group = gs.find(context, id);
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+        if (group == null) {
+            return null;
+        }
+        return converter.toRest(group, utils.obtainProjection());
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @Override
+    public Page<GroupRest> findAll(Context context, Pageable pageable) {
+        try {
+            long total = gs.countTotal(context);
+            List<Group> groups = gs.findAll(context, null, pageable.getPageSize(),
+                                            Math.toIntExact(pageable.getOffset()));
+            return converter.toRestPage(groups, pageable, total, utils.obtainProjection());
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+
+//    @SearchRestMethod(name = "isGroupMember")
+//    public GroupRest isGroupMember() {
+//        try {
+//            Context context = obtainContext();
+//                Group group = gs.findByName(context, "REPORTER");
+//                if(group!=null){
+//                    if(group.getMembers().contains(context.getCurrentUser())){
+//                        return converter.toRest(group, utils.obtainProjection());
+//                    }else {
+//                        throw new ResourceNotFoundException("You are not a member of the group " + group.getName());
+//                    }
+//                }
+//            return converter.toRest(group, utils.obtainProjection());} catch (SQLException e) {
+//            throw new RuntimeException(e.getMessage(), e);
+//        } catch (Exception e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
+
+
+        @SearchRestMethod(name = "isGroupMember")
+    public GroupRest isGroupMember() {
+
+        Context context = null;
+
+        try {
+            context = obtainContext();
+
+            // ── 1. VALIDATE AUTHENTICATION ───────────────────────────────────────
+            EPerson currentUser = context.getCurrentUser();
+            if (currentUser == null) {
+                throw new ResourceNotFoundException(
+                        "Authentication required. Please log in to access this resource."
+                );
+            }
+
+            // ── 2. FIND GROUP ────────────────────────────────────────────────────
+            Group group = gs.findByName(context, "REPORTER");
+            if (group == null) {
+                throw new ResourceNotFoundException(
+                        "Group 'REPORTER' does not exist or has been removed."
+                );
+            }
+
+            // ── 3. LOAD MEMBERS SAFELY ───────────────────────────────────────────
+            List<EPerson> members = group.getMembers();
+            if (members == null || members.isEmpty()) {
+                throw new ResourceNotFoundException(
+                        "Group '" + group.getName() + "' has no members."
+                );
+            }
+
+            // ── 4. CHECK MEMBERSHIP ──────────────────────────────────────────────
+            boolean isMember = members.stream()
+                    .filter(Objects::nonNull)
+                    .anyMatch(member -> member.getID().equals(currentUser.getID()));
+
+            if (!isMember) {
+                throw new ResourceNotFoundException(
+                        "User '" + currentUser.getEmail() + "' is not a member of group '"
+                                + group.getName() + "'."
+                );
+            }
+
+            // ── 5. RESOLVE PROJECTION ────────────────────────────────────────────
+            Projection projection = utils.obtainProjection();
+            if (projection == null) {
+                throw new IllegalStateException(
+                        "Failed to resolve projection for response conversion."
+                );
+            }
+
+            return converter.toRest(group, projection);
+
+        } catch (ResourceNotFoundException e) {
+            // Re-throw known REST exceptions directly — no wrapping
+            throw e;
+
+        } catch (SQLException e) {
+
+            throw new RuntimeException(
+                    "A database error occurred while checking group membership.", e
+            );
+
+        } catch (Exception e) {
+            throw new RuntimeException(
+                    "An unexpected error occurred while checking group membership.", e
+            );
+        }
+    }
+
+    @Override
+    @PreAuthorize("hasPermission(#id, 'GROUP', 'WRITE')")
+    protected void patch(Context context, HttpServletRequest request, String apiCategory, String model, UUID id,
+                         Patch patch) throws AuthorizeException, SQLException {
+        patchDSpaceObject(apiCategory, model, id, patch);
+    }
+
+
+    /**
+     * Find the groups matching the query parameter. The search is delegated to the
+     * {@link GroupService#search(Context, String, int, int)} method
+     *
+     * @param query    is the *required* query string
+     * @param pageable contains the pagination information
+     * @return a Page of GroupRest instances matching the user query
+     */
+    @PreAuthorize("hasAuthority('ADMIN') || hasAuthority('MANAGE_ACCESS_GROUP')")
+    @SearchRestMethod(name = "byMetadata")
+    public Page<GroupRest> findByMetadata(@Parameter(value = "query", required = true) String query,
+                                          Pageable pageable) {
+
+        try {
+            Context context = obtainContext();
+            List<GroupRest> groupsRest=new ArrayList<>();
+            long total = gs.searchResultCount(context, query);
+            List<Group> groups = gs.search(context, query, Math.toIntExact(pageable.getOffset()),
+                                                           Math.toIntExact(pageable.getPageSize()));
+
+            groupsRest = groups.stream().map(d -> {
+                return groupConverter.convertByCount(context, d, utils.obtainProjection());
+            }).collect(toList());
+            return new PageImpl(groupsRest, pageable, total);
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+    @SearchRestMethod(name = "getGroupsByGroupType")
+    public Page<GroupRest> getGroupsByGroupType(@Parameter(value = "typeid", required = true) String typeid,
+                                          Pageable pageable) {
+        try {
+            Context context = obtainContext();
+            List<Group> groups = gs.getGroupsByGroupType(context,UUID.fromString(typeid));
+            return converter.toRestPage(groups, pageable, 100, utils.obtainProjection());
+        } catch (SQLException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public Class<GroupRest> getDomainClass() {
+        return GroupRest.class;
+    }
+
+    @Override
+    @PreAuthorize("hasAuthority('ADMIN')")
+    protected void delete(Context context, UUID uuid) throws AuthorizeException {
+        Group group = null;
+        try {
+            group = gs.find(context, uuid);
+            if (group == null) {
+                throw new ResourceNotFoundException(
+                        GroupRest.CATEGORY + "." + GroupRest.NAME
+                                + " with id: " + uuid + " not found"
+                );
+            }
+            try {
+                if (group.isPermanent()) {
+                    throw new UnprocessableEntityException("A permanent group cannot be deleted");
+                }
+                final DSpaceObject parentObject = gs.getParentObject(context, group);
+                if (parentObject != null) {
+                    throw new UnprocessableEntityException(
+                            "This group cannot be deleted"
+                                    + " as it has a parent " + parentObject.getType()
+                                    + " with id " + parentObject.getID());
+                }
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+            gs.delete(context, group);
+        } catch (SQLException | IOException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+}
