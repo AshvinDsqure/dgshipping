@@ -1,0 +1,39 @@
+{
+  "columns": [
+    {
+      "name": "Department",
+      "required": true,
+      "isCollection": true
+    },
+    {
+      "name": "Category",
+      "metadata": "dc.category",
+      "required": false,
+      "maxLength": 200
+    },
+    {
+      "name": "UDF1",
+      "metadata": "dc.title",
+      "required": true,
+      "maxLength": 500
+    },
+    {
+      "name": "Description",
+      "metadata": "dc.description",
+      "required": false
+    },
+    {
+      "name": "PageNumber",
+      "metadata": "dc.pagenumber",
+      "required": false,
+      "regex": "^[0-9]+$"
+    },
+    {
+      "name": "File",
+      "required": false,
+      "isFile": true,
+      "hasMultiple": true,
+      "separator": "||"
+    }
+  ]
+}

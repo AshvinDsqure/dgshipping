@@ -19,6 +19,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.dspace.app.rest.Parameter;
 import org.dspace.app.rest.SearchRestMethod;
+import org.dspace.app.rest.dspaceevent.AnalyticsServerImpl;
+import org.dspace.app.rest.dspaceevent.models.DspaceEventInfo;
 import org.dspace.app.rest.exception.DSpaceBadRequestException;
 import org.dspace.app.rest.exception.RESTAuthorizationException;
 import org.dspace.app.rest.exception.UnprocessableEntityException;
@@ -39,6 +41,7 @@ import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.eperson.EPerson;
 import org.dspace.eperson.EPersonServiceImpl;
+import org.dspace.event.Event;
 import org.dspace.services.ConfigurationService;
 import org.dspace.workflow.WorkflowException;
 import org.dspace.workflow.WorkflowService;
@@ -90,6 +93,9 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
 
     @Autowired
     SubmissionService submissionService;
+    @Autowired
+    AnalyticsServerImpl analyticsServerImp;
+
 
     @Autowired
     EPersonServiceImpl epersonService;
@@ -165,8 +171,12 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
         if (stringList == null || stringList.isEmpty() || stringList.size() > 1) {
             throw new UnprocessableEntityException("The given URI list could not be properly parsed to one result");
         }
+        HttpServletRequest req = getRequestService().getCurrentRequest().getHttpServletRequest();
+
         try {
             source = submissionService.createWorkflowItem(context, stringList.get(0));
+            this.trackDspaceEvent(context, source.getItem().getID(), Event.CREATE, req.getRemoteAddr(), source.getItem().getName());
+
         } catch (AuthorizeException e) {
             throw new RESTAuthorizationException(e);
         } catch (WorkflowException e) {
@@ -181,6 +191,21 @@ public class WorkflowItemRestRepository extends DSpaceRestRepository<WorkflowIte
             return null;
         }
         return converter.toRest(source, utils.obtainProjection());
+    }
+
+    public void trackDspaceEvent(Context context,UUID dsoID,int action,String ip,String name){
+        try{
+            DspaceEventInfo dspaceEventInfo=analyticsServerImp.getDspaceEventInfo(action,dsoID, Constants.ITEM);
+            if(context.getCurrentUser() != null){
+                dspaceEventInfo.setUserid(context.getCurrentUser().getID());
+            }
+            dspaceEventInfo.setTitle(name);
+            dspaceEventInfo.setIp(ip);
+            //System.out.println("dspaceEventInfo::::"+new Gson().toJson(dspaceEventInfo));
+            analyticsServerImp.storeEvent(dspaceEventInfo);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     @Override

@@ -8,10 +8,12 @@
 package org.dspace.orcid.script;
 
 import java.sql.SQLException;
+import java.util.List;
 
 import org.apache.commons.cli.Options;
 import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.core.Context;
+import org.dspace.scripts.DSpaceCommandLineParameter;
 import org.dspace.scripts.configuration.ScriptConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -29,14 +31,6 @@ public class OrcidBulkPushScriptConfiguration<T extends OrcidBulkPush> extends S
 
     private Class<T> dspaceRunnableClass;
 
-    @Override
-    public boolean isAllowedToExecute(Context context) {
-        try {
-            return authorizeService.isAdmin(context);
-        } catch (SQLException e) {
-            throw new RuntimeException("SQLException occurred when checking if the current user is an admin", e);
-        }
-    }
 
     @Override
     public Class<T> getDspaceRunnableClass() {
@@ -47,6 +41,7 @@ public class OrcidBulkPushScriptConfiguration<T extends OrcidBulkPush> extends S
     public void setDspaceRunnableClass(Class<T> dspaceRunnableClass) {
         this.dspaceRunnableClass = dspaceRunnableClass;
     }
+
 
     @Override
     public Options getOptions() {

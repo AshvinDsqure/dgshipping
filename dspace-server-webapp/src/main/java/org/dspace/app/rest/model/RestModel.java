@@ -51,6 +51,9 @@ public interface RestModel extends Serializable {
     public static final String WORKFLOWPROCESSDRAFTDETAIL = "workflowprocessdraftdetail";
     public static final String WORKFLOWPROCESSCOMMENT = "workflowprocesscomment";
     public static final String WORKFLOWPROCESSOUTWARDDETAIL = "workflowprocessoutwarddetail";
+    public static final String BULKUPLOAD = "bulkupload";
+
+    public static final String DSPACEEVENT = "event";
 
 
 

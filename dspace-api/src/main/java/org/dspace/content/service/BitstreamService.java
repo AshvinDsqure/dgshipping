@@ -247,4 +247,7 @@ public interface BitstreamService extends DSpaceObjectService<Bitstream>, DSpace
 
     public Bitstream createWithoutBundle1(Context context, InputStream is,Bitstream bitstream)
             throws IOException, SQLException, AuthorizeException;
+
+    public UUID findItemByBistream(Context context, Bitstream bitstream) throws SQLException;
+
 }

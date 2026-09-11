@@ -123,6 +123,7 @@ public class Context implements AutoCloseable {
      * Cache that is only used the context is in READ_ONLY mode
      */
     private final ContextReadOnlyCache readOnlyCache = new ContextReadOnlyCache();
+    private Group adminGroup;
 
     protected EventService eventService;
 
@@ -950,5 +951,11 @@ public class Context implements AutoCloseable {
      */
     public boolean isContextUserSwitched() {
         return currentUserPreviousState != null;
+    }
+
+    public Group getAdminGroup() throws SQLException {
+        return (adminGroup == null) ? EPersonServiceFactory.getInstance()
+                .getGroupService()
+                .findByName(this, Group.ADMIN) : adminGroup;
     }
 }

@@ -15,12 +15,17 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.velocity.exception.ResourceNotFoundException;
 import org.dspace.app.rest.authn.OTPService;
 import org.dspace.app.rest.authn.OtpRateLimiter;
+import org.dspace.app.rest.dspaceevent.AnalyticsServerImpl;
+import org.dspace.app.rest.dspaceevent.models.DspaceEventInfo;
 import org.dspace.app.rest.utils.ContextUtil;
+import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.eperson.EPerson;
 import org.dspace.eperson.service.EPersonService;
+import org.dspace.event.Event;
 import org.dspace.services.RequestService;
 import org.dspace.utils.DSpace;
 import org.slf4j.Logger;
@@ -30,6 +35,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.AbstractAuthenticationProcessingFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 /**
  * This class will filter /api/authn/login requests to try and authenticate them. Keep in mind, this filter runs *after*
@@ -48,6 +55,8 @@ public class StatelessLoginFilter extends AbstractAuthenticationProcessingFilter
     protected AuthenticationManager authenticationManager;
 
     protected RestAuthenticationService restAuthenticationService;
+
+    protected AnalyticsServerImpl analyticsServerImp;
     private EPersonService epersonService;
     private OTPService otpService;
 
@@ -135,48 +144,58 @@ public class StatelessLoginFilter extends AbstractAuthenticationProcessingFilter
 
 
         DSpaceAuthentication dSpaceAuthentication = (DSpaceAuthentication) auth;
-        Context context=ContextUtil.obtainContext(req);
-        EPerson eperson;
-        String username = auth.getName();
+        log.debug("Authentication successful for EPerson {}", dSpaceAuthentication.getName());
+        restAuthenticationService.addAuthenticationDataForUser(req, res, dSpaceAuthentication, false);
+        Context context= ContextUtil.obtainContext(req);
 
-        try {
-            // 2️⃣ Create DSpace context to fetch EPerson
-            context = new Context();
-            eperson = epersonService.findByEmail(context, username);
-
-            if (eperson == null) {
-                res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                        "User not found");
-                return;
-            }
-
-        } catch (Exception e) {
-            res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "User lookup failed");
-            return;
-
-        } finally {
-            // 3️⃣ ALWAYS close context to avoid DB leaks
-            if (context != null && context.isValid()) {
-                context.abort();
-            }
+        try{
+            trackDspaceEvent(context, Event.LOGIN,"Login",req);
+        }catch (Exception e){
+            e.printStackTrace();
         }
-        // 4️⃣ Generate and send OTP (DO NOT log user in)
-        String otpSessionId = null;
-        try {
-            otpSessionId = otpService.createOtpSession(eperson,context);
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
-        }
-
-        // 5️⃣ Send OTP-required response
-        res.setStatus(HttpServletResponse.SC_OK);
-        res.setContentType("application/json;charset=UTF-8");
-
-        res.getWriter().write(
-                "{\"status\":\"OTP_REQUIRED\",\"otpSessionId\":\"" + otpSessionId + "\"}"
-        );
-        res.getWriter().flush();
+//        DSpaceAuthentication dSpaceAuthentication = (DSpaceAuthentication) auth;
+//        Context context=ContextUtil.obtainContext(req);
+//        EPerson eperson;
+//        String username = auth.getName();
+//
+//        try {
+//            // 2️⃣ Create DSpace context to fetch EPerson
+//            context = new Context();
+//            eperson = epersonService.findByEmail(context, username);
+//
+//            if (eperson == null) {
+//                res.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+//                        "User not found");
+//                return;
+//            }
+//
+//        } catch (Exception e) {
+//            res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+//                    "User lookup failed");
+//            return;
+//
+//        } finally {
+//            // 3️⃣ ALWAYS close context to avoid DB leaks
+//            if (context != null && context.isValid()) {
+//                context.abort();
+//            }
+//        }
+//        // 4️⃣ Generate and send OTP (DO NOT log user in)
+//        String otpSessionId = null;
+//        try {
+//            otpSessionId = otpService.createOtpSession(eperson,context);
+//        } catch (MessagingException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//        // 5️⃣ Send OTP-required response
+//        res.setStatus(HttpServletResponse.SC_OK);
+//        res.setContentType("application/json;charset=UTF-8");
+//
+//        res.getWriter().write(
+//                "{\"status\":\"OTP_REQUIRED\",\"otpSessionId\":\"" + otpSessionId + "\"}"
+//        );
+//        res.getWriter().flush();
         // 6️⃣ CRITICAL: stop filter chain (no JWT, no session)
 //        try{
 //            trackDspaceEvent(context, Event.LOGIN,"Login",req);
@@ -218,6 +237,12 @@ public class StatelessLoginFilter extends AbstractAuthenticationProcessingFilter
         String authenticateHeaderValue = restAuthenticationService.getWwwAuthenticateHeaderValue(request, response);
         response.setHeader("WWW-Authenticate", authenticateHeaderValue);
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Authentication failed!");
+        Context context= ContextUtil.obtainContext(request);
+        try{
+            trackDspaceEvent(context, Event.UNLOGIN,"UnLogin Authentication failed.",request);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
         log.error("Authentication failed (status:{})",
                 HttpServletResponse.SC_UNAUTHORIZED, failed);
     }
@@ -229,4 +254,24 @@ public class StatelessLoginFilter extends AbstractAuthenticationProcessingFilter
 //    public void setAnalyticsServerImp(AnalyticsServerImpl analyticsServerImp) {
 //        this.analyticsServerImp = analyticsServerImp;
 //    }
+
+    public void trackDspaceEvent(Context context, int action, String title, HttpServletRequest req) {
+        try {
+            if (analyticsServerImp == null) {
+                WebApplicationContext ctx = WebApplicationContextUtils
+                        .getRequiredWebApplicationContext(req.getServletContext());
+                analyticsServerImp = ctx.getBean(AnalyticsServerImpl.class);
+            }
+            DspaceEventInfo dspaceEventInfo = analyticsServerImp.getDspaceEventInfo(action, null, Constants.LOGIN);
+            if (context.getCurrentUser() != null) {
+                dspaceEventInfo.setUserid(context.getCurrentUser().getID());
+            }
+            dspaceEventInfo.setTitle(title);
+            dspaceEventInfo.setIp(req.getRemoteAddr());
+            analyticsServerImp.storeEvent(dspaceEventInfo);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new ResourceNotFoundException("server unavailable");
+        }
+    }
 }

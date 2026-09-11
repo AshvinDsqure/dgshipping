@@ -14,6 +14,7 @@ import static org.springframework.web.bind.annotation.RequestMethod.PUT;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -23,6 +24,8 @@ import org.apache.catalina.connector.ClientAbortException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.Logger;
 import org.dspace.app.rest.converter.ConverterService;
+import org.dspace.app.rest.dspaceevent.AnalyticsServerImpl;
+import org.dspace.app.rest.dspaceevent.models.DspaceEventInfo;
 import org.dspace.app.rest.enums.WorkFlowType;
 import org.dspace.app.rest.exception.DSpaceBadRequestException;
 import org.dspace.app.rest.model.BitstreamRest;
@@ -31,17 +34,12 @@ import org.dspace.app.rest.utils.ContextUtil;
 import org.dspace.app.rest.utils.HttpHeadersInitializer;
 import org.dspace.app.rest.utils.Utils;
 import org.dspace.authorize.AuthorizeException;
-import org.dspace.content.Bitstream;
-import org.dspace.content.BitstreamFormat;
-import org.dspace.content.WorkFlowProcessMaster;
-import org.dspace.content.WorkFlowProcessMasterValue;
-import org.dspace.content.service.BitstreamFormatService;
-import org.dspace.content.service.BitstreamService;
-import org.dspace.content.service.WorkFlowProcessMasterService;
-import org.dspace.content.service.WorkFlowProcessMasterValueService;
+import org.dspace.content.*;
+import org.dspace.content.service.*;
 import org.dspace.core.Context;
 import org.dspace.disseminate.service.CitationDocumentService;
 import org.dspace.eperson.EPerson;
+import org.dspace.event.Event;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.EventService;
 import org.dspace.usage.UsageEvent;
@@ -85,6 +83,9 @@ public class BitstreamRestController {
     @Autowired
     private BitstreamService bitstreamService;
 
+    @Autowired
+    AnalyticsServerImpl analyticsServerImp;
+
 
     @Autowired
     WorkFlowProcessMasterService workFlowProcessMasterService;
@@ -105,6 +106,9 @@ public class BitstreamRestController {
     private ConfigurationService configurationService;
 
     @Autowired
+    private ItemService itemService;
+
+    @Autowired
     ConverterService converter;
 
     @Autowired
@@ -114,6 +118,8 @@ public class BitstreamRestController {
     @RequestMapping(method = {RequestMethod.GET, RequestMethod.HEAD}, value = "content")
     public ResponseEntity retrieve(@PathVariable UUID uuid, HttpServletResponse response,
                                    HttpServletRequest request) throws IOException, SQLException, AuthorizeException {
+
+        String isDownload=request.getParameter("isDownload");
 
 
         Context context = ContextUtil.obtainContext(request);
@@ -171,6 +177,27 @@ public class BitstreamRestController {
 
             //We have all the data we need, close the connection to the database so that it doesn't stay open during
             //download/streaming
+            if(isDownload!=null&&isDownload.equalsIgnoreCase("true")) {
+
+                //:::::::::::::::::::::DOWNLOAD EVENT TRACK:::::::::::::::::::::START
+                try {
+                    Optional.ofNullable(bitstreamService.findItemByBistream(context, bit))
+                            .map(itemId -> {
+                                try {
+                                    return itemService.find(context, itemId);
+                                } catch (SQLException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            })
+                            .ifPresentOrElse(
+                                    item -> this.trackDownloadEvent(context, Event.DOWNLOAD, item, request),
+                                    () -> System.out.println("Item not found for this Bitstream id: " + bit.getID())
+                            );
+                } catch (Exception e) {
+                    System.out.println(":::::::::::::::Download event not tracked:::::");
+                }
+                //:::::::::::::::::::::DOWNLOAD EVENT TRACK:::::::::::::::::::::END
+            }
             context.complete();
 
             //Send the data
@@ -188,7 +215,30 @@ public class BitstreamRestController {
         return null;
     }
 
+    public void trackDownloadEvent(Context context, int action, Item item, HttpServletRequest req){
+        System.out.println("::trackDownloadEvent:::::::::::");
 
+        try{
+            DspaceEventInfo dspaceEventInfo=analyticsServerImp.getDspaceEventInfo(action,item.getID(), item.getType());
+            if(context.getCurrentUser() != null){
+                dspaceEventInfo.setUserid(context.getCurrentUser().getID());
+            }
+            dspaceEventInfo.setTitle(item.getName());
+            dspaceEventInfo.setIp(req.getRemoteAddr());
+
+            if (item!=null) {
+                Collection collection = item.getOwningCollection();
+                dspaceEventInfo.setParenCollection(collection.getID());
+                if (collection.getCommunities().size() != 0) {
+                    dspaceEventInfo.setParenCommunity(collection.getCommunities().get(0).getID());
+                }
+            }
+            //System.out.println("dspaceEventInfo::::"+new Gson().toJson(dspaceEventInfo));
+            analyticsServerImp.storeEvent(dspaceEventInfo);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
     @PreAuthorize("hasPermission(#uuid, 'BITSTREAM', 'READ')")
     @RequestMapping(method = {RequestMethod.GET, RequestMethod.HEAD}, value = "getInwardBitstream")
     public List<Bitstream> getInwardBitstream(@PathVariable UUID uuid, HttpServletResponse response,

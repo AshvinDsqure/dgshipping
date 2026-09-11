@@ -16,7 +16,10 @@ import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.velocity.exception.ResourceNotFoundException;
 import org.dspace.app.rest.converter.ConverterService;
+import org.dspace.app.rest.dspaceevent.AnalyticsServerImpl;
+import org.dspace.app.rest.dspaceevent.models.DspaceEventInfo;
 import org.dspace.app.rest.exception.UnprocessableEntityException;
 import org.dspace.app.rest.link.HalLinkService;
 import org.dspace.app.rest.model.FacetConfigurationRest;
@@ -32,7 +35,14 @@ import org.dspace.app.rest.model.hateoas.SearchResultsResource;
 import org.dspace.app.rest.model.hateoas.SearchSupportResource;
 import org.dspace.app.rest.parameter.SearchFilter;
 import org.dspace.app.rest.repository.DiscoveryRestRepository;
+import org.dspace.app.rest.utils.ContextUtil;
 import org.dspace.app.rest.utils.Utils;
+import org.dspace.core.Constants;
+import org.dspace.core.Context;
+import org.dspace.event.Event;
+import org.dspace.services.RequestService;
+import org.dspace.services.model.Request;
+import org.dspace.utils.DSpace;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -44,6 +54,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * The controller for the api/discover endpoint
@@ -64,6 +76,11 @@ public class DiscoveryRestController implements InitializingBean {
 
     @Autowired
     private DiscoveryRestRepository discoveryRestRepository;
+
+    protected RequestService requestService = new DSpace().getRequestService();
+
+    @Autowired
+    AnalyticsServerImpl analyticsServerImp;
 
     @Autowired
     private HalLinkService halLinkService;
@@ -145,9 +162,25 @@ public class DiscoveryRestController implements InitializingBean {
 
 
         System.out.println("getSearchObjects::::");
-
-
+        Context context=getContext();
         dsoTypes = emptyIfNull(dsoTypes);
+        if(dsoTypes==null||dsoTypes.isEmpty()) {
+            if (query != null) {
+                try {
+                    trackDspaceEvent(context, Event.SEARCH, query);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            searchFilters.stream().forEach(d -> {
+                try {
+                    trackDspaceEvent(context, Event.SEARCH, d.getValue());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
 
         if (log.isTraceEnabled()) {
             log.trace("Searching with scope: " + StringUtils.trimToEmpty(dsoScope)
@@ -238,6 +271,29 @@ public class DiscoveryRestController implements InitializingBean {
                 throw e;
             }
         }
+    }
+
+    public void trackDspaceEvent(Context context, int action, String title) {
+        try {
+            HttpServletRequest req = requestService.getCurrentRequest().getHttpServletRequest();
+            DspaceEventInfo dspaceEventInfo = analyticsServerImp.getDspaceEventInfo(action, null, Constants.SEARCH);
+            if (context.getCurrentUser() != null) {
+                dspaceEventInfo.setUserid(context.getCurrentUser().getID());
+            }
+            dspaceEventInfo.setTitle(title);
+            dspaceEventInfo.setIp(req.getRemoteAddr());
+            //RestResourceController System.out.println("dspaceEventInfo::::" + new Gson().toJson(dspaceEventInfo));
+            analyticsServerImp.storeEvent(dspaceEventInfo);
+        } catch (Exception e) {
+            throw new ResourceNotFoundException("server unavailable");
+        }
+    }
+    private Context getContext() {
+        Request currentRequest = requestService.getCurrentRequest();
+        if (currentRequest != null) {
+            return ContextUtil.obtainContext(currentRequest.getHttpServletRequest());
+        }
+        return null;
     }
 
 }

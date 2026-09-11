@@ -65,7 +65,8 @@ import cn.apiclub.captcha.Captcha;
  */
 @RequestMapping(value = "/api/" + AuthnRest.CATEGORY)
 @RestController
-public class AuthenticationRestController implements InitializingBean {
+public class
+AuthenticationRestController implements InitializingBean {
 
     private static final Logger log = LoggerFactory.getLogger(AuthenticationRestController.class);
 

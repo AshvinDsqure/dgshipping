@@ -33,7 +33,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 
-
+import org.apache.velocity.exception.ResourceNotFoundException;
+import org.dspace.app.rest.dspaceevent.AnalyticsServerImpl;
+import org.dspace.app.rest.dspaceevent.models.DspaceEventInfo;
 import org.dspace.app.rest.exception.CaptchaNotmatchException;
 import org.dspace.app.rest.exception.SessionInvalidatedException;
 
@@ -45,6 +47,7 @@ import org.dspace.authorize.factory.AuthorizeServiceFactory;
 
 import org.dspace.authorize.service.AuthorizeService;
 
+import org.dspace.core.Constants;
 import org.dspace.core.Context;
 
 import org.dspace.eperson.EPerson;
@@ -53,6 +56,7 @@ import org.dspace.eperson.factory.EPersonServiceFactory;
 
 import org.dspace.eperson.service.EPersonService;
 
+import org.dspace.event.Event;
 import org.dspace.services.ConfigurationService;
 
 import org.dspace.services.RequestService;
@@ -80,7 +84,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-
+import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.context.support.WebApplicationContextUtils;
 
 
 /**
@@ -132,6 +137,8 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
 
 
     private ConfigurationService configurationService = DSpaceServicesFactory.getInstance().getConfigurationService();
+
+    protected AnalyticsServerImpl analyticsServerImp;
 
 
 
@@ -266,7 +273,7 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
 
 
 
-
+        Context context= ContextUtil.obtainContext(request);
 
         //System.out.println("StatelessAuthenticationFilter getAuthentication start..>>>.");
 
@@ -282,61 +289,71 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
 
         String password=request.getParameter("password");
 
-        if(user!=null&&password!=null){
+        String iscapcha =  configurationService.getProperty("rest.captcha.enable");
 
-            if (catptchauuid != null && captcha != null) {
+        if(iscapcha!=null&&iscapcha.equalsIgnoreCase("true")) {
+            if (user != null && password != null) {
 
-                System.out.println("uuid :"+catptchauuid);
+                if (catptchauuid != null && captcha != null) {
 
-                System.out.println("captcha :"+captcha);
+                    System.out.println("uuid :" + catptchauuid);
 
-                Cache captchaCache1 = cacheManager.getCache("captchaCache");
+                    System.out.println("captcha :" + captcha);
 
-                if (captchaCache1 != null) {
+                    Cache captchaCache1 = cacheManager.getCache("captchaCache");
 
-                    Cache.ValueWrapper valueWrapper = captchaCache1.get(catptchauuid);
+                    if (captchaCache1 != null) {
 
-                    String catchcaptch = valueWrapper.get().toString();
+                        Cache.ValueWrapper valueWrapper = captchaCache1.get(catptchauuid);
 
-                    System.out.println("in manager cash catchcaptch:"+catchcaptch);
+                        String catchcaptch = valueWrapper.get().toString();
 
-                    if(!captcha.equalsIgnoreCase(catchcaptch)){
+                        System.out.println("in manager cash catchcaptch:" + catchcaptch);
 
-                        res.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE, "Captcha does not match!");
+                        if (!captcha.equalsIgnoreCase(catchcaptch)) {
 
-                        System.out.println(" Captcha does not match!  ");
+                            res.sendError(HttpServletResponse.SC_NOT_ACCEPTABLE, "Captcha does not match!");
+
+                            System.out.println(" Captcha does not match!  ");
+                            try{
+                                trackDspaceEvent(context, Event.UNLOGIN,"UnLogin Captcha does not match.",request);
+                            }catch (Exception e){
+                                e.printStackTrace();
+                            }
+
+                            throw new CaptchaNotmatchException("Captcha does not match!");
+
+                        } else {
+
+                            System.out.println(" Captcha  match Success !");
+
+                        }
+
+                    } else {
+
+                        //          System.out.println("captchaCache is null");
 
                         throw new CaptchaNotmatchException("Captcha does not match!");
 
-                    }else{
-
-                        System.out.println(" Captcha  match Success !");
-
                     }
 
-                }else {
+                } else {
 
-          //          System.out.println("captchaCache is null");
+                    //    System.out.println("catptchauuid or captcha is null");
 
                     throw new CaptchaNotmatchException("Captcha does not match!");
 
                 }
 
-            }else {
-
-            //    System.out.println("catptchauuid or captcha is null");
-
-                throw new CaptchaNotmatchException("Captcha does not match!");
+            } else {
+                //System.out.println("user or password is null");
 
             }
-
-        }else {
-            //System.out.println("user or password is null");
-
         }
+
+
         if (restAuthenticationService.hasAuthenticationData(request)) {
 
-            Context context = ContextUtil.obtainContext(request);
 
             // parse the token.
 
@@ -403,6 +420,26 @@ public class StatelessAuthenticationFilter extends BasicAuthenticationFilter {
     }
 
 
+
+    public void trackDspaceEvent(Context context, int action, String title, HttpServletRequest req) {
+        try {
+            if (analyticsServerImp == null) {
+                WebApplicationContext ctx = WebApplicationContextUtils
+                        .getRequiredWebApplicationContext(req.getServletContext());
+                analyticsServerImp = ctx.getBean(AnalyticsServerImpl.class);
+            }
+            DspaceEventInfo dspaceEventInfo = analyticsServerImp.getDspaceEventInfo(action, null, Constants.LOGIN);
+            if (context.getCurrentUser() != null) {
+                dspaceEventInfo.setUserid(context.getCurrentUser().getID());
+            }
+            dspaceEventInfo.setTitle(title);
+            dspaceEventInfo.setIp(req.getRemoteAddr());
+            analyticsServerImp.storeEvent(dspaceEventInfo);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new ResourceNotFoundException("server unavailable");
+        }
+    }
 
     private Authentication getOnBehalfOfAuthentication(Context context, String onBehalfOfParameterValue,
 

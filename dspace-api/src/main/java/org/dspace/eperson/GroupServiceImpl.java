@@ -741,9 +741,20 @@ public class GroupServiceImpl extends DSpaceObjectServiceImpl<Group> implements 
                             List<ResourcePolicy> policies = resourcePolicyService.find(context, null, groups,
                                                             Constants.DEFAULT_ITEM_READ, Constants.COLLECTION);
 
-                            Optional<ResourcePolicy> defaultPolicy = policies.stream().filter(p -> StringUtils.equals(
-                                    collectionService.getDefaultReadGroupName((Collection) p.getdSpaceObject(), "ITEM"),
-                                    group.getName())).findFirst();
+                            Optional<ResourcePolicy> defaultPolicy = policies.stream().filter(p -> {
+                                try {
+                                    DSpaceObject dso = p.getdSpaceObject();
+                                    if (!(dso instanceof Collection)) {
+                                        return false;
+                                    }
+                                    return StringUtils.equals(
+                                            collectionService.getDefaultReadGroupName((Collection) dso, "ITEM"),
+                                            group.getName());
+                                } catch (Exception e) {
+                                    log.warn("Skipping resource policy {} with unresolvable dSpaceObject", p.getID(), e);
+                                    return false;
+                                }
+                            }).findFirst();
 
                             if (defaultPolicy.isPresent()) {
                                 return defaultPolicy.get().getdSpaceObject();
@@ -751,9 +762,22 @@ public class GroupServiceImpl extends DSpaceObjectServiceImpl<Group> implements 
                             policies = resourcePolicyService.find(context, null, groups,
                                                              Constants.DEFAULT_BITSTREAM_READ, Constants.COLLECTION);
 
-                            defaultPolicy = policies.stream()
-                                    .filter(p -> StringUtils.equals(collectionService.getDefaultReadGroupName(
-                                            (Collection) p.getdSpaceObject(), "BITSTREAM"), group.getName()))
+                            final List<ResourcePolicy> bitstreamPolicies = policies;
+                            defaultPolicy = bitstreamPolicies.stream()
+                                    .filter(p -> {
+                                        try {
+                                            DSpaceObject dso = p.getdSpaceObject();
+                                            if (!(dso instanceof Collection)) {
+                                                return false;
+                                            }
+                                            return StringUtils.equals(collectionService.getDefaultReadGroupName(
+                                                    (Collection) dso, "BITSTREAM"), group.getName());
+                                        } catch (Exception e) {
+                                            log.warn("Skipping resource policy {} with unresolvable dSpaceObject",
+                                                     p.getID(), e);
+                                            return false;
+                                        }
+                                    })
                                     .findFirst();
 
                             if (defaultPolicy.isPresent()) {

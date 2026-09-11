@@ -7,6 +7,7 @@
  */
 package org.dspace.content.dao;
 
+import java.sql.SQLException;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 import org.dspace.content.Event;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
 
 /**
  * Database Access Object interface class for the Item object. The
@@ -138,5 +140,9 @@ public interface EventDAO extends DSpaceObjectLegacySupportDAO<Event> {
 
 	public List<Object[]> getcitycountryByCollection(Context cntxt, String Query, String country, String GroupBy)
 			throws Exception;
+
+
+	public List<Object[]> findAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user, Integer action) throws SQLException;
+	public int countfindAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user,Integer action) throws SQLException;
 
 }

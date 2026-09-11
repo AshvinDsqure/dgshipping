@@ -47,6 +47,7 @@ import org.dspace.discovery.SearchServiceException;
 import org.dspace.discovery.indexobject.IndexableCommunity;
 import org.dspace.eperson.Group;
 import org.dspace.eperson.service.GroupService;
+import org.dspace.event.Event;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -142,6 +143,7 @@ public class CommunityRestRepository extends DSpaceObjectRestRepository<Communit
             community = cs.create(parent, context);
             cs.update(context, community);
             metadataConverter.mergeMetadata(context, community, communityRest.getMetadata());
+            this.trackDspaceEvent(context, Event.CREATE,community);
         } catch (SQLException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
@@ -283,11 +285,13 @@ public class CommunityRestRepository extends DSpaceObjectRestRepository<Communit
         }
         try {
             cs.delete(context, community);
+            this.trackDspaceEvent(context,Event.REMOVE,community);
         } catch (SQLException e) {
             throw new RuntimeException("Unable to delete Community with id = " + id, e);
         } catch (IOException e) {
             throw new RuntimeException("Unable to delete community because the logo couldn't be deleted", e);
         }
+
     }
 
     /**

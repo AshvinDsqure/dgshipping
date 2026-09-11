@@ -28,6 +28,7 @@ import org.dspace.core.Context;
 import org.dspace.eperson.service.EPersonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,6 +41,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * This is the rest repository responsible for managing WorkflowDefinition Rest objects
@@ -184,9 +187,13 @@ public class WorkflowProcessNoteRestRepository extends DSpaceObjectRestRepositor
             long total = workflowProcessNoteService.countDocumentByItemid(context, itemid,statusid,DISPATCHCLOSE);
             List<WorkflowProcessNote> witems = workflowProcessNoteService.getDocumentByItemid(context, itemid,statusid,DISPATCHCLOSE, Math.toIntExact(pageable.getOffset()),
                     Math.toIntExact(pageable.getPageSize()));
+            List<WorkflowProcessNoteRest>workflowsRes = witems.stream().map(d -> {
+                return workflowProcessNoteConverter.convertBYAPPROVAL(d, utils.obtainProjection());
+            }).collect(toList());
+            System.out.println("out parkedWorkflow");
+            return new PageImpl(workflowsRes, pageable, total);
+           // return converter.toRestPage(witems, pageable, total, utils.obtainProjection());
 
-
-            return converter.toRestPage(witems, pageable, total, utils.obtainProjection());
         } catch (SQLException e) {
             throw new RuntimeException(e.getMessage(), e);
         }

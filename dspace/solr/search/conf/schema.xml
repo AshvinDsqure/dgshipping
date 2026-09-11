@@ -294,7 +294,7 @@
     <dynamicField name="*_stored" type="dspaceMetadataProjection" indexed="false" stored="true" multiValued="true"/>
 
     <!--Dynamic field used for search autocompletion-->
-    <dynamicField name="*_ac" type="keywordFilter" indexed="true" stored="true" omitNorms="true" multiValued="true"/>
+    <dynamicField name="*_ac" type="text" indexed="true" stored="true" omitNorms="true" multiValued="true"/>
 	<dynamicField name="*_acid" type="keywordFilter" indexed="true" stored="true" omitNorms="true" multiValued="true"/>
 
     <!--Dynamic field used for sidebar filters & SOLR browse by value -->

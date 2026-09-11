@@ -31,9 +31,10 @@ public class ExcelHelper {
     public static String TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     static String[] HEADERs = {
             "Sr No",
-            "Case Detail",
-            "Hierarchy(Community & Collection)",
-            "Upload date",
+            "UDF1",
+            "PageNumber",
+            "Folder Name",
+            "Submission Date & Time",
             "Uploaded by",
     };
 
@@ -90,10 +91,11 @@ public class ExcelHelper {
             for (ExcelDTO item : tutorials) {
                 Row row = sheet.createRow(rowIdx++);
                 row.createCell(0).setCellValue(i);
-                row.createCell(1).setCellValue(item.getCaseDetail());
-                row.createCell(2).setCellValue(item.getHierarchy());
-                row.createCell(3).setCellValue(DateFormateddmmyyyy(item.getUploaddate()));
-                row.createCell(4).setCellValue(item.getUploadedby());
+                row.createCell(1).setCellValue(item.getUdf1());
+                row.createCell(2).setCellValue(item.getPagenumber());
+                row.createCell(3).setCellValue(item.getFoldername());
+                row.createCell(4).setCellValue(DateFormateddmmyyyy(item.getUploaddate()));
+                row.createCell(5).setCellValue(item.getUploadedby());
                 i++;
             }
             workbook.write(out);

@@ -43,6 +43,9 @@ public class ItemConverter
     private ItemService itemService;
 
     @Autowired
+    EPersonConverter ePersonConverter;
+
+    @Autowired
     private WorkflowProcessService workflowProcessService;
 
     private static final Logger log = org.apache.logging.log4j.LogManager.getLogger(ItemConverter.class);
@@ -56,6 +59,22 @@ public class ItemConverter
         item.setLastModified(obj.getLastModified());
         List<MetadataValue> entityTypes =
             itemService.getMetadata(obj, "dspace", "entity", "type", Item.ANY, false);
+        if (CollectionUtils.isNotEmpty(entityTypes) && StringUtils.isNotBlank(entityTypes.get(0).getValue())) {
+            item.setEntityType(entityTypes.get(0).getValue());
+        }
+        return item;
+    }
+    public ItemRest convertbyProductivityreport(Item obj, Projection projection) {
+        ItemRest item = super.convert(obj, projection);
+        item.setInArchive(obj.isArchived());
+        item.setDiscoverable(obj.isDiscoverable());
+        item.setWithdrawn(obj.isWithdrawn());
+        item.setLastModified(obj.getLastModified());
+        item.setHierarchy(obj.getOwningCollection().getName());
+        item.setCollectionid(obj.getOwningCollection().getID());
+        item.setSubmitter(ePersonConverter.convert(obj.getSubmitter(),projection));
+        List<MetadataValue> entityTypes =
+                itemService.getMetadata(obj, "dspace", "entity", "type", Item.ANY, false);
         if (CollectionUtils.isNotEmpty(entityTypes) && StringUtils.isNotBlank(entityTypes.get(0).getValue())) {
             item.setEntityType(entityTypes.get(0).getValue());
         }

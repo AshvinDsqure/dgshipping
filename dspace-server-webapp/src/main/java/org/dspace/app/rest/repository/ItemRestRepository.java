@@ -45,6 +45,7 @@ import org.dspace.content.service.*;
 import org.dspace.core.Context;
 import org.dspace.eperson.EPerson;
 import org.dspace.eperson.service.EPersonService;
+import org.dspace.event.Event;
 import org.dspace.util.UUIDUtils;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -125,8 +126,8 @@ public class ItemRestRepository extends DSpaceObjectRestRepository<Item, ItemRes
 
     @Override
     //@PreAuthorize("hasPermission(#id, 'ITEM', 'STATUS') || hasPermission(#id, 'ITEM', 'READ')")
-    @PreAuthorize("hasPermission(#uuid, 'ITEM', 'WRITE')")
-
+    //@PreAuthorize("hasPermission(#uuid, 'ITEM', 'WRITE')")
+    @PreAuthorize("hasPermission(#id, 'ITEM', 'STATUS') || hasPermission(#id, 'ITEM', 'READ')")
     public ItemRest findOne(Context context, UUID id) {
         Item item = null;
         try {
@@ -139,6 +140,19 @@ public class ItemRestRepository extends DSpaceObjectRestRepository<Item, ItemRes
         }
         if (item.getTemplateItemOf() != null) {
             throw new DSpaceBadRequestException("Item with id: " + id + " is a template item.");
+        }
+        HttpServletRequest req = getRequestService().getCurrentRequest().getHttpServletRequest();
+        try {
+            if (req.getParameter("embed") != null && req.getParameter("feature")!=null) {
+                String owningCollectionUuidString = req.getParameter("embed");
+                String feature  = req.getParameter("feature");
+                if (owningCollectionUuidString.equals("feature")&&feature.equals("canEditMetadata")) {
+                    System.out.println(":::::::TRACK Event.VIEW :::::::::::");
+                    this.trackDspaceEvent(context, Event.VIEW, item);
+                }
+            }
+        } catch (Exception e) {
+
         }
         return converter.toRest(item, utils.obtainProjection());
     }
@@ -440,13 +454,13 @@ public class ItemRestRepository extends DSpaceObjectRestRepository<Item, ItemRes
 
         try {
             Context context = obtainContext();
-
             long total = itemService.countTotal(context, startdate, enddate);
             List<Item> witems = itemService.getDataTwoDateRange(context, startdate, enddate, Math.toIntExact(pageable.getOffset()),
                     Math.toIntExact(pageable.getPageSize()));
-
-
-            return converter.toRestPage(witems, pageable, total, utils.obtainProjection());
+            List<ItemRest> rests = witems.stream().map(d -> {
+                return itemConverter.convertbyProductivityreport(d, utils.obtainProjection());
+            }).collect(Collectors.toList());
+            return new PageImpl(rests, pageable, total);
         } catch (SQLException e) {
             throw new RuntimeException(e.getMessage(), e);
         }

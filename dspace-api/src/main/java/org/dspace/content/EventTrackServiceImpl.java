@@ -19,6 +19,7 @@ import org.dspace.authorize.AuthorizeException;
 import org.dspace.content.dao.EventDAO;
 import org.dspace.content.service.EventTrackService;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -303,6 +304,15 @@ public class EventTrackServiceImpl extends DSpaceObjectServiceImpl<Event> implem
     @Override
     public List<Object[]> getcitycountryByCollection(Context cntxt, String Query, String Country, String GroupBy) throws Exception {
          return eventDAO.getcitycountryByCollection(cntxt, Query, Country, GroupBy);
+    }
+    @Override
+    public List<Object[]> findAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user, Integer action) throws SQLException{
+        return eventDAO.findAllByCurrentDate(context,limit,offset,startDate,endDate,user,action);
+    }
+
+    @Override
+    public int countfindAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user,Integer action) throws SQLException {
+        return eventDAO.countfindAllByCurrentDate(context,limit,offset,startDate,endDate,user,action);
     }
     
 }

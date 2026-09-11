@@ -39,14 +39,6 @@ public class MockDSpaceRunnableScriptConfiguration<T extends MockDSpaceRunnableS
         this.dspaceRunnableClass = dspaceRunnableClass;
     }
 
-    @Override
-    public boolean isAllowedToExecute(Context context) {
-        try {
-            return authorizeService.isAdmin(context);
-        } catch (SQLException e) {
-            throw new RuntimeException("SQLException occurred when checking if the current user is an admin", e);
-        }
-    }
 
     @Override
     public Options getOptions() {

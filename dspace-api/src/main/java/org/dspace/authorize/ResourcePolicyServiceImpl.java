@@ -54,6 +54,11 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
     protected ResourcePolicyServiceImpl() {
     }
 
+    @Override
+    public ResourcePolicy create(Context context) throws SQLException, AuthorizeException {
+        return null;
+    }
+
     /**
      * Get an ResourcePolicy from the database.
      *
@@ -71,14 +76,22 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
      * Create a new ResourcePolicy
      *
      * @param context DSpace context object
+     * @param ePerson
+     * @param group
      * @return ResourcePolicy
      * @throws SQLException if database error
      */
     @Override
-    public ResourcePolicy create(Context context) throws SQLException {
+    public ResourcePolicy create(Context context, EPerson ePerson, Group group) throws SQLException {
         // FIXME: Check authorisation
         // Create a table row
-        ResourcePolicy resourcePolicy = resourcePolicyDAO.create(context, new ResourcePolicy());
+        ResourcePolicy policyToBeCreated = new ResourcePolicy();
+        if (ePerson == null && group == null) {
+            throw new IllegalArgumentException("A resource policy must contain a valid eperson or group");
+        }
+        policyToBeCreated.setEPerson(ePerson);
+        policyToBeCreated.setGroup(group);
+        ResourcePolicy resourcePolicy = resourcePolicyDAO.create(context, policyToBeCreated);
         return resourcePolicy;
     }
 
@@ -110,7 +123,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public List<ResourcePolicy> find(Context c, EPerson e, List<Group> groups, int action, int type_id)
-        throws SQLException {
+            throws SQLException {
         return resourcePolicyDAO.findByEPersonGroupTypeIdAction(c, e, groups, action, type_id);
     }
 
@@ -122,7 +135,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
     @Override
     public List<ResourcePolicy> findByTypeGroupActionExceptId(Context context, DSpaceObject dso, Group group,
                                                               int action, int notPolicyID)
-        throws SQLException {
+            throws SQLException {
         return resourcePolicyDAO.findByTypeGroupActionExceptId(context, dso, group, action, notPolicyID);
     }
 
@@ -145,7 +158,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
         if (resourcePolicy.getdSpaceObject() != null) {
             //A policy for a DSpace Object has been modified, fire a modify event on the DSpace object
             contentServiceFactory.getDSpaceObjectService(resourcePolicy.getdSpaceObject())
-                                 .updateLastModified(context, resourcePolicy.getdSpaceObject());
+                    .updateLastModified(context, resourcePolicy.getdSpaceObject());
         }
         context.restoreAuthSystemState();
     }
@@ -204,10 +217,8 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public ResourcePolicy clone(Context context, ResourcePolicy resourcePolicy)
-        throws SQLException, AuthorizeException {
-        ResourcePolicy clone = create(context);
-        clone.setGroup(resourcePolicy.getGroup());
-        clone.setEPerson(resourcePolicy.getEPerson());
+            throws SQLException, AuthorizeException {
+        ResourcePolicy clone = create(context, resourcePolicy.getEPerson(), resourcePolicy.getGroup());
         clone.setStartDate((Date) ObjectUtils.clone(resourcePolicy.getStartDate()));
         clone.setEndDate((Date) ObjectUtils.clone(resourcePolicy.getEndDate()));
         clone.setRpType((String) ObjectUtils.clone(resourcePolicy.getRpType()));
@@ -233,8 +244,17 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
     }
 
     @Override
+    public void removePolicies(Context c, DSpaceObject o, String type, int action)
+            throws SQLException, AuthorizeException {
+        resourcePolicyDAO.deleteByDsoAndTypeAndAction(c, o, type, action);
+        c.turnOffAuthorisationSystem();
+        contentServiceFactory.getDSpaceObjectService(o).updateLastModified(c, o);
+        c.restoreAuthSystemState();
+    }
+
+    @Override
     public void removeDsoGroupPolicies(Context context, DSpaceObject dso, Group group)
-        throws SQLException, AuthorizeException {
+            throws SQLException, AuthorizeException {
         resourcePolicyDAO.deleteByDsoGroupPolicies(context, dso, group);
         context.turnOffAuthorisationSystem();
         contentServiceFactory.getDSpaceObjectService(dso).updateLastModified(context, dso);
@@ -243,7 +263,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public void removeDsoEPersonPolicies(Context context, DSpaceObject dso, EPerson ePerson)
-        throws SQLException, AuthorizeException {
+            throws SQLException, AuthorizeException {
         resourcePolicyDAO.deleteByDsoEPersonPolicies(context, dso, ePerson);
         context.turnOffAuthorisationSystem();
         contentServiceFactory.getDSpaceObjectService(dso).updateLastModified(context, dso);
@@ -275,7 +295,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public void removeDsoAndTypeNotEqualsToPolicies(Context c, DSpaceObject o, String type)
-        throws SQLException, AuthorizeException {
+            throws SQLException, AuthorizeException {
         resourcePolicyDAO.deleteByDsoAndTypeNotEqualsTo(c, o, type);
         c.turnOffAuthorisationSystem();
         contentServiceFactory.getDSpaceObjectService(o).updateLastModified(c, o);
@@ -310,7 +330,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
                 }
 
                 // FIXME: Check authorisation
-                resourcePolicyDAO.save(context, resourcePolicy);
+                resourcePolicyDAO.create(context, resourcePolicy);
             }
 
             //Update the last modified timestamp of all related DSpace Objects
@@ -325,13 +345,13 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public List<ResourcePolicy> findExceptRpType(Context c, DSpaceObject o, int actionID, String rpType)
-        throws SQLException {
+            throws SQLException {
         return resourcePolicyDAO.findByDSoAndActionExceptRpType(c, o, actionID, rpType);
     }
 
     @Override
     public List<ResourcePolicy> findByEPerson(Context context, EPerson ePerson, int offset, int limit)
-        throws SQLException {
+            throws SQLException {
         return resourcePolicyDAO.findByEPerson(context, ePerson, offset, limit);
     }
 
@@ -342,19 +362,19 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public List<ResourcePolicy> findByEPersonAndResourceUuid(Context context, EPerson eperson, UUID resourceUuid,
-        int offset, int limit) throws SQLException {
+                                                             int offset, int limit) throws SQLException {
         return resourcePolicyDAO.findByEPersonAndResourceUuid(context, eperson, resourceUuid, offset, limit);
     }
 
     @Override
     public int countResourcePoliciesByEPersonAndResourceUuid(Context context, EPerson eperson, UUID resourceUuid)
-        throws SQLException {
+            throws SQLException {
         return resourcePolicyDAO.countByEPersonAndResourceUuid(context, eperson, resourceUuid);
     }
 
     @Override
     public List<ResourcePolicy> findByResouceUuidAndActionId(Context context, UUID resourceUuid, int actionId,
-        int offset, int limit) throws SQLException {
+                                                             int offset, int limit) throws SQLException {
         return resourcePolicyDAO.findByResouceUuidAndActionId(context, resourceUuid, actionId, offset, limit);
     }
 
@@ -365,7 +385,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public List<ResourcePolicy> findByResouceUuid(Context context, UUID resourceUuid, int offset, int limit)
-        throws SQLException {
+            throws SQLException {
         return resourcePolicyDAO.findByResouceUuid(context, resourceUuid, offset, limit);
     }
 
@@ -386,7 +406,7 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
 
     @Override
     public List<ResourcePolicy> findByGroupAndResourceUuid(Context context, Group group, UUID resourceUuid,
-        int offset, int limit) throws SQLException {
+                                                           int offset, int limit) throws SQLException {
         return resourcePolicyDAO.findByGroupAndResourceUuid(context, group, resourceUuid, offset, limit);
     }
 

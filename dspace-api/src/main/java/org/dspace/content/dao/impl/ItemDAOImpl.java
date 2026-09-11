@@ -468,21 +468,26 @@ public class ItemDAOImpl extends AbstractHibernateDSODAO<Item> implements ItemDA
 
     }
 
+    //Productivity Report
     @Override
     public List<Item> getDataTwoDateRange(Context context, MetadataField metadataField, String startdate, String endDate, Integer offset, Integer limit) throws SQLException {
         log.info("metadatafile:::::::::::::::" + metadataField);
         log.info("startdate:::::::::::::::" + startdate);
         log.info("enddate:::::::::::::::" + endDate);
-        Query query = createQuery(context, "SELECT item FROM Item as item " +
-                "join item.metadata metadatavalue " +
-                "WHERE item.inArchive=:in_archive  " +
-                "AND  metadatavalue.metadataField = :metadataField " +
-                "AND STR(metadatavalue.value) >= :startdate " +
-                "AND STR(metadatavalue.value) <= :endDate  order by TO_DATE(STR(metadatavalue.value),'yyyy-MM-dd')");
+        Query  query = createQuery(context,
+                "SELECT item FROM Item as item " +
+                        "JOIN item.metadata metadatavalue " +
+                        "WHERE item.inArchive = :in_archive " +
+                        "AND metadatavalue.metadataField = :metadataField " +
+                        "AND TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') >= TO_TIMESTAMP(:startdate, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') " +
+                        "AND TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') <= TO_TIMESTAMP(:endDate, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') " +
+                        "ORDER BY TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') DESC");
+
         query.setParameter("in_archive", true);
         query.setParameter("metadataField", metadataField);
-        query.setParameter("startdate", startdate);
-        query.setParameter("endDate", endDate);
+        query.setParameter("startdate", startdate + "T00:00:00Z"); // Assuming startdate is like "2024-11-22"
+        query.setParameter("endDate", endDate + "T23:59:59Z"); // Assuming endDate is like "2024-11-22" // assume endDate is already in 'yyyy-MM-dd' format
+
         if (0 <= offset) {
             query.setFirstResult(offset);
         }
@@ -493,24 +498,26 @@ public class ItemDAOImpl extends AbstractHibernateDSODAO<Item> implements ItemDA
     }
 
     @Override
-        public List<Item> getDataTwoDateRangeDownload(Context context, MetadataField metadataField, String startdate, String endDate) throws SQLException {
+    public List<Item> getDataTwoDateRangeDownload(Context context, MetadataField metadataField, String startdate, String endDate) throws SQLException {
+        log.info("metadatafile:::::::::::::::" + metadataField);
+        log.info("startdate:::::::::::::::" + startdate);
+        log.info("enddate:::::::::::::::" + endDate);
 
-            log.info("metadatafile:::::::::::::::" + metadataField);
-            log.info("startdate:::::::::::::::" + startdate);
-            log.info("enddate:::::::::::::::" + endDate);
-            Query query = createQuery(context, "SELECT item FROM Item as item " +
-                    "join item.metadata metadatavalue " +
-                    "WHERE item.inArchive=:in_archive  " +
-                    "AND  metadatavalue.metadataField = :metadataField " +
-                    "AND STR(metadatavalue.value) >= :startdate " +
-                    "AND STR(metadatavalue.value) <= :endDate order by TO_DATE(STR(metadatavalue.value),'yyyy-MM-dd hh:mm:ss')");
-            query.setParameter("in_archive", true);
-            query.setParameter("metadataField", metadataField);
-            query.setParameter("startdate", startdate);
-            query.setParameter("endDate", endDate);
+        Query  query = createQuery(context,
+                "SELECT item FROM Item as item " +
+                        "JOIN item.metadata metadatavalue " +
+                        "WHERE item.inArchive = :in_archive " +
+                        "AND metadatavalue.metadataField = :metadataField " +
+                        "AND TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') >= TO_TIMESTAMP(:startdate, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') " +
+                        "AND TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') <= TO_TIMESTAMP(:endDate, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') " +
+                        "ORDER BY TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') DESC");
 
-            return query.getResultList();
-        }
+        query.setParameter("in_archive", true);
+        query.setParameter("metadataField", metadataField);
+        query.setParameter("startdate", startdate + "T00:00:00Z"); // Assuming startdate is like "2024-11-22"
+        query.setParameter("endDate", endDate + "T23:59:59Z"); // Assuming endDate is like "2024-11-22" // assume endDate is already in 'yyyy-MM-dd' format
+        return query.getResultList();
+    }
 
     @Override
     public int countTotal(Context context, MetadataField metadataField, String startdate, String endDate) throws SQLException {
@@ -518,19 +525,22 @@ public class ItemDAOImpl extends AbstractHibernateDSODAO<Item> implements ItemDA
         log.info("startdate:::::::::::::::" + startdate);
         log.info("enddate:::::::::::::::" + endDate);
 
-        Query query = createQuery(context, "SELECT count(*) FROM Item as item " +
-                "join item.metadata  metadatavalue " +
-                "WHERE item.inArchive=:in_archive  " +
-                "AND  metadatavalue.metadataField = :metadataField " +
-                "AND STR(metadatavalue.value) >= :startdate " +
-                "AND STR(metadatavalue.value) <= :endDate");
+        Query  query = createQuery(context,
+                "SELECT count(item) FROM Item as item " +
+                        "JOIN item.metadata metadatavalue " +
+                        "WHERE item.inArchive = :in_archive " +
+                        "AND metadatavalue.metadataField = :metadataField " +
+                        "AND TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') >= TO_TIMESTAMP(:startdate, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') " +
+                        "AND TO_TIMESTAMP(metadatavalue.value, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') <= TO_TIMESTAMP(:endDate, 'yyyy-MM-dd\"T\"HH24:MI:SS\"Z\"') " +
+                        "");
 
         query.setParameter("in_archive", true);
         query.setParameter("metadataField", metadataField);
-        query.setParameter("startdate", startdate);
-        query.setParameter("endDate", endDate);
+        query.setParameter("startdate", startdate + "T00:00:00Z"); // Assuming startdate is like "2024-11-22"
+        query.setParameter("endDate", endDate + "T23:59:59Z"); // Assuming endDate is like "2024-11-22" // assume endDate is already in 'yyyy-MM-dd' format
         return count(query);
     }
+    //Productivity Reportd
 
     @Override
     public List<Item> searchItemByTitle(Context context, MetadataField metadataField, String title) throws Exception {

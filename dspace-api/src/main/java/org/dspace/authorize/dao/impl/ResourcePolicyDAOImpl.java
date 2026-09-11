@@ -390,4 +390,16 @@ public class ResourcePolicyDAOImpl extends AbstractHibernateDAO<ResourcePolicy> 
         criteriaQuery.where(criteriaBuilder.equal(resourcePolicyRoot.get(ResourcePolicy_.id), id));
         return singleResult(context, criteriaQuery);
     }
+    @Override
+    public void deleteByDsoAndTypeAndAction(Context context, DSpaceObject dso, String type, int actionId)
+            throws SQLException {
+        String queryString = "delete from ResourcePolicy where dSpaceObject.id = :dsoId "
+                + "AND rptype = :rptype AND actionId= :actionId";
+        Query query = createQuery(context, queryString);
+        query.setParameter("dsoId", dso.getID());
+        query.setParameter("rptype", type);
+        query.setParameter("actionId", actionId);
+        query.executeUpdate();
+
+    }
 }

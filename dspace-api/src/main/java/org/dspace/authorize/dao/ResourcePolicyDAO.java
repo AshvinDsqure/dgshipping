@@ -238,6 +238,8 @@ public interface ResourcePolicyDAO extends GenericDAO<ResourcePolicy> {
     public int countByGroupAndResourceUuid(Context context, Group group, UUID resourceUuid) throws SQLException;
 
     public ResourcePolicy findOneById(Context context, Integer id) throws SQLException;
+    public void deleteByDsoAndTypeAndAction(Context context, DSpaceObject dSpaceObject, String type, int action)
+            throws SQLException;
 
 
 }

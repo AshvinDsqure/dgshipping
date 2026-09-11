@@ -948,6 +948,40 @@ public class ItemServiceImpl extends DSpaceObjectServiceImpl<Item> implements It
             context.restoreAuthSystemState();
         }
     }
+    @Override
+    public void adjustItemPolicies(Context context, Item item, Collection collection,
+                                   boolean replaceReadRPWithCollectionRP)
+            throws SQLException, AuthorizeException {
+        // read collection's default READ policies
+        List<ResourcePolicy> defaultCollectionPolicies = authorizeService
+                .getPoliciesActionFilter(context, collection, Constants.DEFAULT_ITEM_READ);
+
+        // If collection has defaultREAD policies, remove the item's READ policies.
+        if (replaceReadRPWithCollectionRP && defaultCollectionPolicies.size() > 0) {
+            authorizeService.removePoliciesActionFilter(context, item, Constants.READ);
+        }
+
+        // MUST have default policies
+        if (defaultCollectionPolicies.size() < 1) {
+            throw new SQLException("Collection " + collection.getID()
+                    + " (" + collection.getHandle() + ")"
+                    + " has no default item READ policies");
+        }
+
+        try {
+            //ignore the authorizations for now.
+            context.turnOffAuthorisationSystem();
+
+            // if come from InstallItem: remove all submission/workflow policies
+            authorizeService.removeAllPoliciesByDSOAndType(context, item, ResourcePolicy.TYPE_SUBMISSION);
+            authorizeService.removeAllPoliciesByDSOAndType(context, item, ResourcePolicy.TYPE_WORKFLOW);
+
+            // add default policies only if not already in place
+            addDefaultPoliciesNotInPlace(context, item, defaultCollectionPolicies);
+        } finally {
+            context.restoreAuthSystemState();
+        }
+    }
 
     @Override
     public void move(Context context, Item item, Collection from, Collection to)
@@ -1794,6 +1828,39 @@ prevent the generation of resource policy entry values with null dspace_object a
     public int countDepartmentDiscardedFile(Context context, UUID eperson, UUID epersontoepersonmapid, HashMap<String, String> perameter) throws SQLException {
         MetadataField metadataFieldaccessioneddate = metadataFieldService.findByElement(context, MetadataSchemaEnum.DC.getName(), "date", "accessioned");
         return itemDAO.countDepartmentDiscardedFile(context, eperson, epersontoepersonmapid, perameter,metadataFieldaccessioneddate);
+    }
+
+    @Override
+    public void adjustBitstreamPolicies(Context context, Item item, Collection collection, Bitstream bitstream)
+            throws SQLException, AuthorizeException {
+        adjustBitstreamPolicies(context, item, collection, bitstream, true);
+    }
+
+    public void adjustBitstreamPolicies(Context context, Item item, Collection collection , Bitstream bitstream,
+                                        boolean replaceReadRPWithCollectionRP)
+            throws SQLException, AuthorizeException {
+        List<ResourcePolicy> defaultCollectionPolicies = authorizeService
+                .getPoliciesActionFilter(context, collection, Constants.DEFAULT_BITSTREAM_READ);
+
+        List<ResourcePolicy> defaultItemPolicies = authorizeService.findPoliciesByDSOAndType(context, item,
+                ResourcePolicy.TYPE_CUSTOM);
+        if (defaultCollectionPolicies.size() < 1) {
+            throw new SQLException("Collection " + collection.getID()
+                    + " (" + collection.getHandle() + ")"
+                    + " has no default bitstream READ policies");
+        }
+
+        // remove all policies from bitstream, add new ones
+        removeAllPoliciesAndAddDefault(context, bitstream, defaultItemPolicies, defaultCollectionPolicies);
+    }
+    private void removeAllPoliciesAndAddDefault(Context context, Bitstream bitstream,
+                                                List<ResourcePolicy> defaultItemPolicies,
+                                                List<ResourcePolicy> defaultCollectionPolicies)
+            throws SQLException, AuthorizeException {
+        authorizeService.removeAllPoliciesByDSOAndType(context, bitstream, ResourcePolicy.TYPE_SUBMISSION);
+        authorizeService.removeAllPoliciesByDSOAndType(context, bitstream, ResourcePolicy.TYPE_WORKFLOW);
+        addCustomPoliciesNotInPlace(context, bitstream, defaultItemPolicies);
+        addDefaultPoliciesNotInPlace(context, bitstream, defaultCollectionPolicies);
     }
 
 }

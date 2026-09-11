@@ -9,57 +9,42 @@ package org.dspace.app.rest.model;
 
 public class ExcelDTO {
 
-   private  String title;
-    private String type;
-    private String issue;
-    private String caseDetail;
+    private String udf1;
+    private String pagenumber;
+    private String foldername;
     private String uploaddate;
     private String uploadedby;
 
-    private String hierarchy;
-    private String email;
-
-
-    public ExcelDTO(String title, String type, String issue, String caseDetail, String uploaddate, String uploadedby,String hierarchy,String email) {
-        this.title = title;
-        this.type = type;
-        this.issue = issue;
-        this.caseDetail = caseDetail;
+    public ExcelDTO(String udf1, String pagenumber, String foldername, String uploaddate, String uploadedby) {
+        this.udf1 = udf1;
+        this.pagenumber = pagenumber;
+        this.foldername = foldername;
         this.uploaddate = uploaddate;
         this.uploadedby = uploadedby;
-        this.hierarchy =hierarchy;
-        this.email=email;
-    }
-    public String getTitle() {
-        return title;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
+    public String getUdf1() {
+        return udf1;
     }
 
-    public String getType() {
-        return type;
+    public void setUdf1(String udf1) {
+        this.udf1 = udf1;
     }
 
-    public void setType(String type) {
-        this.type = type;
+    public String getPagenumber() {
+        return pagenumber;
     }
 
-    public String getIssue() {
-        return issue;
+    public void setPagenumber(String pagenumber) {
+        this.pagenumber = pagenumber;
     }
 
-    public void setIssue(String issue) {
-        this.issue = issue;
+    public String getFoldername() {
+        return foldername;
     }
 
-    public String getCaseDetail() {
-        return caseDetail;
-    }
-
-    public void setCaseDetail(String caseDetail) {
-        this.caseDetail = caseDetail;
+    public void setFoldername(String foldername) {
+        this.foldername = foldername;
     }
 
     public String getUploaddate() {
@@ -76,26 +61,5 @@ public class ExcelDTO {
 
     public void setUploadedby(String uploadedby) {
         this.uploadedby = uploadedby;
-    }
-
-    public String getHierarchy() {
-        return hierarchy;
-    }
-
-    public void setHierarchy(String hierarchy) {
-        this.hierarchy = hierarchy;
-    }
-
-    public String  getCashDetails(){
-
-        return  this.type+"/"+this.title+"/"+this.issue;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
     }
 }

@@ -146,17 +146,17 @@ public class SubmissionService {
                 throw new RESTAuthorizationException("collectionUUID=" + collectionUUID + " not found");
             }
             wsi = workspaceItemService.create(context, collection, true);
-            Item i = wsi.getItem();
-            String fileno=getFileNumber(context);
-            if(fileno!=null) {
-                itemService.addMetadata(context, i, "dc", "title", null, null, fileno);
-            }else{
-                throw new  RuntimeException("FILE Number not Ganarate");
-            }
-            itemService.addMetadata(context, i, "dc", "department", null, null, getDepartment(context));
-            itemService.addMetadata(context, i, "dc", "office", null, null,getOffice(context));
-
-            System.out.println(":::::::::::::::::::::::::::::::::done medata::::::::");
+            //Item i = wsi.getItem();
+//            String fileno=getFileNumber(context);
+//            if(fileno!=null) {
+//                itemService.addMetadata(context, i, "dc", "title", null, null, fileno);
+//            }else{
+//                throw new  RuntimeException("FILE Number not Ganarate");
+//            }
+//            itemService.addMetadata(context, i, "dc", "department", null, null, getDepartment(context));
+//            itemService.addMetadata(context, i, "dc", "office", null, null,getOffice(context));
+//
+            //System.out.println(":::::::::::::::::::::::::::::::::done medata::::::::");
         } catch (SQLException e) {
             // wrap in a runtime exception as we cannot change the method signature
             throw new UncategorizedScriptException(e.getMessage(), e);

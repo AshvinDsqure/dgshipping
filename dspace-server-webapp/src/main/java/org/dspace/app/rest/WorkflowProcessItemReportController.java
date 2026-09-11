@@ -393,18 +393,14 @@ public class WorkflowProcessItemReportController {
             System.out.println("size" + list.size());
             List<ExcelDTO> listDTo = list.stream().map(i -> {
                 String title = itemService.getMetadataFirstValue(i, "dc", "title", null, null);
-                String type = itemService.getMetadataFirstValue(i, "casefile", "case", "typename", null);
-                String issued = itemService.getMetadataFirstValue(i, "casefile", "case", "registrationyear", null);
-                type = (type != null) ? type : "-";
-                title = (title != null) ? title : "-";
-                issued = (issued != null) ? issued : "-";
-                String caseDetail = type + "/" + title + "/" + issued;
+                String pagenumber = itemService.getMetadataFirstValue(i, "dc", "pagenumber", null, null);
                 String uploaddate = itemService.getMetadataFirstValue(i, "dc", "date", "accessioned", null);
+                pagenumber = (pagenumber != null) ? pagenumber : "-";
+                title = (title != null) ? title : "-";
                 uploaddate = (uploaddate != null) ? uploaddate : "-";
-                String uploadedby = i.getSubmitter().getEmail();
-                String hierarchy = i.getOwningCollection().getName();
-                String email = (context.getCurrentUser() != null) ? context.getCurrentUser().getEmail() : "-";
-                return new ExcelDTO(title, type, issued, caseDetail, uploaddate, uploadedby, hierarchy, email);
+                String uploadedby = (i.getSubmitter().getFullName()!=null?i.getSubmitter().getFullName():"-");
+                String foldername = (i.getOwningCollection().getName()!=null?i.getOwningCollection().getName():"-");
+                return new ExcelDTO(title, pagenumber, foldername, uploaddate, uploadedby);
             }).collect(Collectors.toList());
             ByteArrayInputStream in = ExcelHelper.tutorialsToExcel(listDTo);
             InputStreamResource file = new InputStreamResource(in);

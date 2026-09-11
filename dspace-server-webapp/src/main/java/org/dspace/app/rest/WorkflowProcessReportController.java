@@ -138,40 +138,40 @@ public class WorkflowProcessReportController {
      */
 
 
-    @RequestMapping(method = RequestMethod.GET, value = "/downloadItemReport")
-    public ResponseEntity<Resource> downloadItem(HttpServletRequest request,
-                                                 @Parameter(value = "startdate", required = true) String startdate,
-                                                 @Parameter(value = "enddate", required = true) String enddate) {
-        try {
-            Context context = ContextUtil.obtainContext(request);
-            String filename = "ProductivityReport.xlsx";
-            List<Item> list = itemService.getDataTwoDateRangeDownload(context, startdate, enddate);
-            System.out.println("size" + list.size());
-            List<ExcelDTO> listDTo = list.stream().map(i -> {
-                String title = itemService.getMetadataFirstValue(i, "dc", "title", null, null);
-                String type = itemService.getMetadataFirstValue(i, "casefile", "case", "typename", null);
-                String issued = itemService.getMetadataFirstValue(i, "casefile", "case", "registrationyear", null);
-                type = (type != null) ? type : "-";
-                title = (title != null) ? title : "-";
-                issued = (issued != null) ? issued : "-";
-                String caseDetail = type + "/" + title + "/" + issued;
-                String uploaddate = itemService.getMetadataFirstValue(i, "dc", "date", "accessioned", null);
-                uploaddate = (uploaddate != null) ? uploaddate : "-";
-                String uploadedby = i.getSubmitter().getEmail();
-                String hierarchy = i.getOwningCollection().getName();
-                String email = (context.getCurrentUser() != null) ? context.getCurrentUser().getEmail() : "-";
-                return new ExcelDTO(title, type, issued, caseDetail, uploaddate, uploadedby, hierarchy, email);
-            }).collect(Collectors.toList());
-            ByteArrayInputStream in = ExcelHelper.tutorialsToExcel(listDTo);
-            InputStreamResource file = new InputStreamResource(in);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
-                    .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
-                    .body(file);
-        } catch (SQLException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
-    }
+//    @RequestMapping(method = RequestMethod.GET, value = "/downloadItemReport")
+//    public ResponseEntity<Resource> downloadItem(HttpServletRequest request,
+//                                                 @Parameter(value = "startdate", required = true) String startdate,
+//                                                 @Parameter(value = "enddate", required = true) String enddate) {
+//        try {
+//            Context context = ContextUtil.obtainContext(request);
+//            String filename = "ProductivityReport.xlsx";
+//            List<Item> list = itemService.getDataTwoDateRangeDownload(context, startdate, enddate);
+//            System.out.println("size" + list.size());
+//            List<ExcelDTO> listDTo = list.stream().map(i -> {
+//                String title = itemService.getMetadataFirstValue(i, "dc", "title", null, null);
+//                String type = itemService.getMetadataFirstValue(i, "casefile", "case", "typename", null);
+//                String issued = itemService.getMetadataFirstValue(i, "casefile", "case", "registrationyear", null);
+//                type = (type != null) ? type : "-";
+//                title = (title != null) ? title : "-";
+//                issued = (issued != null) ? issued : "-";
+//                String caseDetail = type + "/" + title + "/" + issued;
+//                String uploaddate = itemService.getMetadataFirstValue(i, "dc", "date", "accessioned", null);
+//                uploaddate = (uploaddate != null) ? uploaddate : "-";
+//                String uploadedby = i.getSubmitter().getEmail();
+//                String hierarchy = i.getOwningCollection().getName();
+//                String email = (context.getCurrentUser() != null) ? context.getCurrentUser().getEmail() : "-";
+//                return new ExcelDTO(title, type, issued, caseDetail, uploaddate, uploadedby, hierarchy, email);
+//            }).collect(Collectors.toList());
+//            ByteArrayInputStream in = ExcelHelper.tutorialsToExcel(listDTo);
+//            InputStreamResource file = new InputStreamResource(in);
+//            return ResponseEntity.ok()
+//                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+//                    .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+//                    .body(file);
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e.getMessage(), e);
+//        }
+//    }
 
 
     @RequestMapping(method = RequestMethod.GET, value = "/withinDepartmentDownload")

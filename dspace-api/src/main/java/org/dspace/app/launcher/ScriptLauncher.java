@@ -7,15 +7,6 @@
  */
 package org.dspace.app.launcher;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.sql.SQLException;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.TreeMap;
-
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,6 +23,15 @@ import org.dspace.services.RequestService;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.input.SAXBuilder;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.sql.SQLException;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.TreeMap;
 
 /**
  * A DSpace script launcher.
@@ -62,7 +62,7 @@ public class ScriptLauncher {
      * @throws FileNotFoundException if file doesn't exist
      */
     public static void main(String[] args)
-        throws FileNotFoundException, IOException, IllegalAccessException, InstantiationException {
+            throws FileNotFoundException, IOException, IllegalAccessException, InstantiationException {
         // Initialise the service manager kernel
         try {
             kernelImpl = DSpaceKernelInit.getKernel(null);
@@ -145,8 +145,13 @@ public class ScriptLauncher {
     private static int executeScript(String[] args, DSpaceRunnableHandler dSpaceRunnableHandler,
                                      DSpaceRunnable script) {
         try {
-            script.initialize(args, dSpaceRunnableHandler, null);
-            script.run();
+            DSpaceRunnable.StepResult result = script.initialize(args, dSpaceRunnableHandler, null);
+            // check the StepResult, only run the script if the result is Continue;
+            // otherwise - for example the script is started with the help as argument, nothing is to do
+            if (DSpaceRunnable.StepResult.Continue.equals(result)) {
+                // runs the script, the normal initialization is successful
+                script.run();
+            }
             return 0;
         } catch (ParseException e) {
             script.printHelp();
@@ -203,8 +208,8 @@ public class ScriptLauncher {
             }
             try {
                 target = Class.forName(className,
-                                       true,
-                                       Thread.currentThread().getContextClassLoader());
+                        true,
+                        Thread.currentThread().getContextClassLoader());
             } catch (ClassNotFoundException e) {
                 System.err.println("Error in launcher.xml: Invalid class name: " + className);
                 return 1;
@@ -216,7 +221,7 @@ public class ScriptLauncher {
             Class[] argTypes = {useargs.getClass()};
             boolean passargs = true;
             if ((step.getAttribute("passuserargs") != null) &&
-                ("false".equalsIgnoreCase(step.getAttribute("passuserargs").getValue()))) {
+                    ("false".equalsIgnoreCase(step.getAttribute("passuserargs").getValue()))) {
                 passargs = false;
             }
             if ((args.length == 1) || (("dsrun".equals(request)) && (args.length == 2)) || (!passargs)) {
@@ -251,10 +256,10 @@ public class ScriptLauncher {
 
             // Establish the request service startup
             RequestService requestService = kernelImpl.getServiceManager().getServiceByName(
-                RequestService.class.getName(), RequestService.class);
+                    RequestService.class.getName(), RequestService.class);
             if (requestService == null) {
                 throw new IllegalStateException(
-                    "Could not get the DSpace RequestService to start the request transaction");
+                        "Could not get the DSpace RequestService to start the request transaction");
             }
 
             // Establish a request related to the current session
@@ -306,8 +311,8 @@ public class ScriptLauncher {
     public static Document getConfig(DSpaceKernelImpl kernelImpl) {
         // Load the launcher configuration file
         String config = kernelImpl.getConfigurationService().getProperty("dspace.dir") +
-            System.getProperty("file.separator") + "config" +
-            System.getProperty("file.separator") + "launcher.xml";
+                System.getProperty("file.separator") + "config" +
+                System.getProperty("file.separator") + "launcher.xml";
         SAXBuilder saxBuilder = new SAXBuilder();
         Document doc = null;
         try {
@@ -335,8 +340,8 @@ public class ScriptLauncher {
             System.out.println("\nCommands from launcher.xml");
             for (Element command : launcherCommands) {
                 displayCommand(
-                    command.getChild("name").getValue(),
-                    command.getChild("description").getValue()
+                        command.getChild("name").getValue(),
+                        command.getChild("description").getValue()
                 );
             }
         }
@@ -347,8 +352,8 @@ public class ScriptLauncher {
             System.out.println("\nCommands from script service");
             for (ScriptConfiguration command : serviceCommands) {
                 displayCommand(
-                    command.getName(),
-                    command.getDescription()
+                        command.getName(),
+                        command.getDescription()
                 );
             }
         }

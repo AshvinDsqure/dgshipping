@@ -8,6 +8,7 @@
 package org.dspace.app.rest.model;
 
 import java.util.Date;
+import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.dspace.eperson.EPerson;
@@ -73,6 +74,7 @@ import org.dspace.eperson.EPerson;
     private String uploaddate;
     private String uploadedby;
     private String hierarchy;
+    private UUID collectionid;
     private String currentRecipients;
 
     private Date recivedDate;
@@ -228,5 +230,13 @@ import org.dspace.eperson.EPerson;
 
     public void setRecivedDate(Date recivedDate) {
         this.recivedDate = recivedDate;
+    }
+
+    public UUID getCollectionid() {
+        return collectionid;
+    }
+
+    public void setCollectionid(UUID collectionid) {
+        this.collectionid = collectionid;
     }
 }

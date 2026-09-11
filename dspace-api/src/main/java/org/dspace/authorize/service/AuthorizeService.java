@@ -82,7 +82,7 @@ public interface AuthorizeService {
      * @throws SQLException       An exception that provides information on a database access error or other errors.
      */
     public void authorizeAction(Context c, DSpaceObject o, int action, boolean useInheritance)
-        throws AuthorizeException, SQLException;
+            throws AuthorizeException, SQLException;
 
     /**
      * Checks that the specified eperson can perform the given action on
@@ -100,7 +100,7 @@ public interface AuthorizeService {
      * @throws SQLException       An exception that provides information on a database access error or other errors.
      */
     public void authorizeAction(Context c, EPerson e, DSpaceObject o, int action, boolean useInheritance)
-        throws AuthorizeException, SQLException;
+            throws AuthorizeException, SQLException;
 
     /**
      * same authorize, returns boolean for those who don't want to deal with
@@ -149,7 +149,7 @@ public interface AuthorizeService {
      * @throws SQLException An exception that provides information on a database access error or other errors.
      */
     public boolean authorizeActionBoolean(Context c, EPerson e, DSpaceObject o, int a, boolean useInheritance)
-        throws SQLException;
+            throws SQLException;
 
     ///////////////////////////////////////////////
     // admin check methods
@@ -240,7 +240,7 @@ public interface AuthorizeService {
      * @throws AuthorizeException if current user in context is not authorized to add policies
      */
     public void addPolicy(Context c, DSpaceObject o, int actionID, EPerson e, String type)
-        throws SQLException, AuthorizeException;
+            throws SQLException, AuthorizeException;
 
     /**
      * Add a policy for a group
@@ -266,7 +266,7 @@ public interface AuthorizeService {
      * @throws AuthorizeException if the current user is not authorized to add this policy
      */
     public void addPolicy(Context c, DSpaceObject o, int actionID, Group g, String type)
-        throws SQLException, AuthorizeException;
+            throws SQLException, AuthorizeException;
 
     /**
      * Return a List of the policies for an object
@@ -343,7 +343,7 @@ public interface AuthorizeService {
      * @throws AuthorizeException if the current user is not authorized to add these policies
      */
     public void addPolicies(Context c, List<ResourcePolicy> policies, DSpaceObject dest)
-        throws SQLException, AuthorizeException;
+            throws SQLException, AuthorizeException;
 
     /**
      * removes ALL policies for an object.  FIXME doesn't check authorization
@@ -365,7 +365,7 @@ public interface AuthorizeService {
      * @throws AuthorizeException if authorization error
      */
     public void removeAllPoliciesByDSOAndTypeNotEqualsTo(Context c, DSpaceObject o, String type)
-        throws SQLException, AuthorizeException;
+            throws SQLException, AuthorizeException;
 
     /**
      * removes policies
@@ -377,7 +377,7 @@ public interface AuthorizeService {
      * @throws AuthorizeException if authorization error
      */
     public void removeAllPoliciesByDSOAndType(Context c, DSpaceObject o, String type)
-        throws SQLException, AuthorizeException;
+            throws SQLException, AuthorizeException;
 
     /**
      * Remove all policies from an object that match a given action. FIXME
@@ -391,7 +391,7 @@ public interface AuthorizeService {
      * @throws AuthorizeException if authorization error
      */
     public void removePoliciesActionFilter(Context context, DSpaceObject dso, int actionID)
-        throws SQLException, AuthorizeException;
+            throws SQLException, AuthorizeException;
 
     /**
      * Removes all policies relating to a particular group. FIXME doesn't check
@@ -465,28 +465,10 @@ public interface AuthorizeService {
      * @throws SQLException if there's a database problem
      */
     public boolean isAnIdenticalPolicyAlreadyInPlace(Context c, DSpaceObject o, Group group, int actionID, int policyID)
-        throws SQLException;
+            throws SQLException;
 
     public ResourcePolicy findByTypeGroupAction(Context c, DSpaceObject dso, Group group, int action)
-        throws SQLException;
-
-
-    /**
-     * Generate Policies policies READ for the date in input adding reason. New policies are assigned automatically
-     * at the groups that
-     * have right on the collection. E.g., if the anonymous can access the collection policies are assigned to
-     * anonymous.
-     *
-     * @param context          current context
-     * @param embargoDate      date
-     * @param reason           reason
-     * @param dso              DSpaceObject
-     * @param owningCollection collection
-     * @throws SQLException       if database error
-     * @throws AuthorizeException if authorization error
-     */
-    public void generateAutomaticPolicies(Context context, Date embargoDate, String reason, DSpaceObject dso,
-                                          Collection owningCollection) throws SQLException, AuthorizeException;
+            throws SQLException;
 
     public ResourcePolicy createResourcePolicy(Context context, DSpaceObject dso, Group group, EPerson eperson,
                                                int type, String rpType) throws SQLException, AuthorizeException;
@@ -512,7 +494,7 @@ public interface AuthorizeService {
      *                            to perform a particular action.
      */
     void switchPoliciesAction(Context context, DSpaceObject dso, int fromAction, int toAction)
-        throws SQLException, AuthorizeException;
+            throws SQLException, AuthorizeException;
 
     /**
      * Checks that the context's current user is a community admin in the site by querying the solr database.
@@ -531,6 +513,15 @@ public interface AuthorizeService {
      *                  false when this is not the case, or an exception occurred
      */
     boolean isCollectionAdmin(Context context) throws SQLException;
+
+    /**
+     * Checks that the context's current user is an item admin in the site by querying the solr database.
+     *
+     * @param context   context with the current user
+     * @return          true if the current user is an item admin in the site
+     *                  false when this is not the case, or an exception occurred
+     */
+    boolean     isItemAdmin(Context context) throws SQLException;
 
     /**
      * Checks that the context's current user is a community or collection admin in the site.
@@ -553,7 +544,7 @@ public interface AuthorizeService {
      * @throws SQLException
      */
     List<Community> findAdminAuthorizedCommunity(Context context, String query, int offset, int limit)
-        throws SearchServiceException, SQLException;
+            throws SearchServiceException, SQLException;
 
     /**
      * Counts communities for which the current user is admin, AND which match the query.
@@ -565,7 +556,7 @@ public interface AuthorizeService {
      * @throws SQLException
      */
     long countAdminAuthorizedCommunity(Context context, String query)
-        throws SearchServiceException, SQLException;
+            throws SearchServiceException, SQLException;
 
     /**
      * Finds collections for which the current user is admin, AND which match the query.
@@ -579,7 +570,7 @@ public interface AuthorizeService {
      * @throws SQLException
      */
     List<Collection> findAdminAuthorizedCollection(Context context, String query, int offset, int limit)
-        throws SearchServiceException, SQLException;
+            throws SearchServiceException, SQLException;
 
     /**
      * Counts collections for which the current user is admin, AND which match the query.
@@ -591,7 +582,7 @@ public interface AuthorizeService {
      * @throws SQLException
      */
     long countAdminAuthorizedCollection(Context context, String query)
-        throws SearchServiceException, SQLException;
+            throws SearchServiceException, SQLException;
 
     /**
      * Returns true if the current user can manage accounts.
@@ -600,4 +591,17 @@ public interface AuthorizeService {
      * @return         true if the current user can manage accounts
      */
     boolean isAccountManager(Context context);
+
+    /**
+     * Replace all the policies in the target object with exactly the same policies that exist in the source object
+     *
+     * @param context DSpace Context
+     * @param source  source of policies
+     * @param dest    destination of inherited policies
+     * @throws SQLException       if there's a database problem
+     * @throws AuthorizeException if the current user is not authorized to add these policies
+     */
+    public void replaceAllPolicies(Context context, DSpaceObject source, DSpaceObject dest)
+            throws SQLException, AuthorizeException;
+
 }

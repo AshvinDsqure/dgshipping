@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -153,6 +154,13 @@ public class Application extends SpringBootServletInitializer {
                 .weakKeys()
                 .recordStats());*/
         return cacheManager;
+    }
+
+    @Bean(name = "analytics")
+    @Primary
+    public RestTemplate analyticsssetRestTemplate(RestTemplateBuilder builder) {
+        // various alternate configurations
+        return new RestTemplate();
     }
     @Bean
     public ModelMapper modelMapper(){

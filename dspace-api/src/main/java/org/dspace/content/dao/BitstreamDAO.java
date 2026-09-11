@@ -56,5 +56,6 @@ public interface BitstreamDAO extends DSpaceObjectLegacySupportDAO<Bitstream> {
 
     List<Bitstream> getNotReferencedBitstreams(Context context) throws SQLException;
     List<Bitstream> getNotBitstreamsbySatatus(Context context ,UUID drfttype, UUID itemid,UUID workflowstatuscloseid,UUID dspaceclosecloseid, Integer offset, Integer limit) throws SQLException;
+    public UUID findItemByBistream(Context context, Bitstream bitstream) throws SQLException;
 
 }

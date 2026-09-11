@@ -8,13 +8,17 @@
 package org.dspace.app.mediafilter;
 
 import java.io.InputStream;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang.StringUtils;
 import org.dspace.app.mediafilter.service.MediaFilterService;
+import org.dspace.authorize.AuthorizeException;
 import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.Bitstream;
 import org.dspace.content.BitstreamFormat;
@@ -499,5 +503,46 @@ public class MediaFilterServiceImpl implements MediaFilterService, InitializingB
     @Override
     public void setLogHandler(DSpaceRunnableHandler handler) {
         this.handler = handler;
+    }
+    @Override
+    public void updatePoliciesOfDerivativeBitstreams(Context context, Item item, Bitstream source)
+            throws SQLException, AuthorizeException {
+
+        if (filterClasses == null) {
+            return;
+        }
+
+        for (FormatFilter formatFilter : filterClasses) {
+            for (Bitstream bitstream : findDerivativeBitstreams(item, source, formatFilter)) {
+                updatePoliciesOfDerivativeBitstream(context, bitstream, formatFilter, source);
+            }
+        }
+    }
+
+    private void updatePoliciesOfDerivativeBitstream(Context context, Bitstream bitstream, FormatFilter formatFilter,
+                                                     Bitstream source) throws SQLException, AuthorizeException {
+
+        authorizeService.removeAllPolicies(context, bitstream);
+
+        if (publicFiltersClasses.contains(formatFilter.getClass().getSimpleName())) {
+            Group anonymous = groupService.findByName(context, Group.ANONYMOUS);
+            authorizeService.addPolicy(context, bitstream, Constants.READ, anonymous);
+        } else {
+            authorizeService.replaceAllPolicies(context, source, bitstream);
+        }
+    }
+
+    private List<Bitstream> findDerivativeBitstreams(Item item, Bitstream source, FormatFilter formatFilter)
+            throws SQLException {
+
+        String bitstreamName = formatFilter.getFilteredName(source.getName());
+        List<Bundle> bundles = itemService.getBundles(item, formatFilter.getBundleName());
+
+        return bundles.stream()
+                .flatMap(bundle ->
+                        bundle.getBitstreams().stream())
+                .filter(bitstream ->
+                        StringUtils.equals(bitstream.getName().trim(), bitstreamName.trim()))
+                .collect(Collectors.toList());
     }
 }

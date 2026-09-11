@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    The contents of this file are subject to the license and copyright
+    detailed in the LICENSE and NOTICE files at the root of the source
+    tree and available online at
+
+    http://www.dspace.org/license/
+
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="org.dspace.bulkupload.dao.BulkUploadProcessDAO"
+          class="org.dspace.bulkupload.dao.impl.BulkUploadProcessDAOImpl"
+          lazy-init="false" scope="singleton"/>
+
+    <bean id="org.dspace.bulkupload.service.BulkUploadProcessService"
+          class="org.dspace.bulkupload.service.BulkUploadProcessServiceImpl"
+          lazy-init="false" scope="singleton"/>
+
+    <bean id="org.dspace.bulkupload.BulkUploadRuleEngine"
+          class="org.dspace.bulkupload.service.BulkUploadRuleEngine"
+          lazy-init="false" scope="singleton"
+          init-method="init"/>
+
+    <bean id="org.dspace.bulkupload.service.BulkUploadValidationService"
+          class="org.dspace.bulkupload.service.BulkUploadValidationServiceImpl"
+          lazy-init="false" scope="singleton"/>
+
+    <bean id="org.dspace.bulkupload.service.BulkUploadService"
+          class="org.dspace.bulkupload.service.BulkUploadServiceImpl"
+          lazy-init="false" scope="singleton"/>
+
+</beans>

@@ -58,6 +58,7 @@ import org.dspace.discovery.SearchServiceException;
 import org.dspace.discovery.indexobject.IndexableCollection;
 import org.dspace.eperson.Group;
 import org.dspace.eperson.service.GroupService;
+import org.dspace.event.Event;
 import org.dspace.workflow.WorkflowException;
 import org.dspace.workflow.WorkflowService;
 import org.dspace.xmlworkflow.WorkflowConfigurationException;
@@ -355,6 +356,11 @@ public class CollectionRestRepository extends DSpaceObjectRestRepository<Collect
         } catch (SQLException e) {
             throw new RuntimeException("Unable to create new Collection under parent Community " + id, e);
         }
+        try {
+            this.trackDspaceEvent(context, Event.CREATE, collection);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
         return converter.toRest(collection, utils.obtainProjection());
     }
 
@@ -393,6 +399,11 @@ public class CollectionRestRepository extends DSpaceObjectRestRepository<Collect
             if (collection == null) {
                 throw new ResourceNotFoundException(
                     CollectionRest.CATEGORY + "." + CollectionRest.NAME + " with id: " + id + " not found");
+            }
+            try{
+                this.trackDspaceEvent(context,Event.REMOVE,collection);
+            }catch (Exception e){
+
             }
             cs.delete(context, collection);
         } catch (SQLException e) {

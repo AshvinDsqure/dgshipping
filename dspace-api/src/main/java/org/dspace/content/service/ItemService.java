@@ -516,6 +516,10 @@ public interface ItemService
     public void adjustItemPolicies(Context context, Item item, Collection collection)
         throws SQLException, AuthorizeException;
 
+    public void adjustItemPolicies(Context context, Item item, Collection collection,
+                                   boolean replaceReadRPWithCollectionRP)
+            throws SQLException, AuthorizeException;
+
     /**
      * Moves the item from one collection to another one
      *
@@ -876,5 +880,6 @@ public interface ItemService
      * @throws SQLException if database error
      */
     public int countDepartmentDiscardedFile(Context context, UUID eperson, UUID epersontoepersonmapid, HashMap<String, String> perameter) throws SQLException;
+    public void adjustBitstreamPolicies(Context context, Item item, Collection collection, Bitstream bitstream)throws SQLException, AuthorizeException;
 
 }

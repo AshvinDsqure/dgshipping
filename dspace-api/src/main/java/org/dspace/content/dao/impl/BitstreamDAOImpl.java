@@ -23,6 +23,7 @@ import org.dspace.content.dao.BitstreamDAO;
 import org.dspace.core.AbstractHibernateDSODAO;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.hibernate.type.StandardBasicTypes;
 
 /**
  * Hibernate implementation of the Database Access Object interface class for the Bitstream object.
@@ -199,6 +200,30 @@ public class BitstreamDAOImpl extends AbstractHibernateDSODAO<Bitstream> impleme
     public Iterator<Bitstream> findAll(Context context, int limit, int offset) throws SQLException {
         Map<String, Object> map = new HashMap<>();
         return findByX(context, Bitstream.class, map, true, limit, offset).iterator();
+
+    }
+    public UUID findItemByBistream(Context context, Bitstream bitstream) throws SQLException {
+
+        try {
+            String sql = "SELECT item_id " +
+                    "FROM item2bundle " +
+                    "WHERE bundle_id IN (" +
+                    "    SELECT bundle_id " +
+                    "    FROM bundle2bitstream " +
+                    "    WHERE bitstream_id = :bitstreamId" +
+                    ") " +
+                    "LIMIT 1";
+
+            Query query = createSQLQuery(context, sql);
+            query.setParameter("bitstreamId", bitstream.getID());
+            query.unwrap(org.hibernate.query.NativeQuery.class)
+                    .addScalar("item_id", StandardBasicTypes.UUID_CHAR);  // Set the expected return type explicitly
+
+            return (UUID) query.getSingleResult();
+        }catch (Exception e ){
+            System.out.println("::Data not found findItemByBistream "+e.getMessage());
+            return null;
+        }
 
     }
 }

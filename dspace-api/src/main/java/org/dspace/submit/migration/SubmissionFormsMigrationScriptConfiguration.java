@@ -17,9 +17,4 @@ import org.dspace.core.Context;
  */
 public class SubmissionFormsMigrationScriptConfiguration extends SubmissionFormsMigrationCliScriptConfiguration {
 
-    @Override
-    public boolean isAllowedToExecute(Context context) {
-        // Script is not allowed to be executed from REST side
-        return false;
-    }
 }

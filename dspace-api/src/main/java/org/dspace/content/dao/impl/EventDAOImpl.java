@@ -9,18 +9,18 @@ package org.dspace.content.dao.impl;
 
 import com.google.gson.Gson;
 import java.math.BigInteger;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+
 import org.dspace.app.util.Constant;
 import org.dspace.core.AbstractHibernateDSODAO;
 import org.dspace.content.Event;
 import org.dspace.content.dao.EventDAO;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
 import org.hibernate.Query;
 
 import org.apache.logging.log4j.Logger;
@@ -658,6 +658,114 @@ public class EventDAOImpl extends AbstractHibernateDSODAO<Event> implements Even
     public List<Object[]> ViewCountReport(Context cntxt, String Query) throws Exception {
         Query query = createSQLQuery(cntxt, Query);
         return query.list();
+    }
+    @Override
+    public List<Object[]> findAllByCurrentDate(
+            Context context,
+            Integer limit,
+            Integer offset,
+            Date startDate,
+            Date endDate,
+            EPerson user,
+            Integer action) throws SQLException {
+
+        try {
+            String sql = buildFindAllByCurrentDateQuery(
+                    startDate != null && endDate != null,
+                    user != null && user.getID() != null,
+                    action != null
+            );
+
+            Query query = createSQLQuery(context, sql);
+
+            // Date filter
+            if (startDate != null && endDate != null) {
+
+                Calendar calendar = Calendar.getInstance();
+                calendar.setTime(endDate);
+                calendar.set(Calendar.HOUR_OF_DAY, 23);
+                calendar.set(Calendar.MINUTE, 59);
+                calendar.set(Calendar.SECOND, 59);
+                calendar.set(Calendar.MILLISECOND, 999);
+
+                Date finalEndDate = calendar.getTime();
+
+                query.setParameter("startDate", startDate);
+                query.setParameter("endDate", finalEndDate);
+            }
+
+            // User filter
+            if (user != null && user.getID() != null) {
+                query.setParameter("userid", user.getID());
+            }
+
+            // Action filter
+            if (action != null) {
+                query.setParameter("action", action);
+            }
+
+            // Pagination
+            if (offset != null && limit != null) {
+                query.setFirstResult(offset);
+                query.setMaxResults(limit);
+            }
+
+            return query.getResultList();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    private String buildFindAllByCurrentDateQuery(boolean hasDateFilter, boolean hasUserFilter, boolean hasActionFilter) {
+        StringBuilder sql = new StringBuilder();
+
+        sql.append("SELECT CAST(e.uuid AS VARCHAR) AS uuid, ");
+        sql.append("e.title, ");
+        sql.append("TO_CHAR(e.action_date, 'YYYY-MM-DD hh:mm:ss') AS action_date, ");
+        sql.append("e.action, ");
+        sql.append("e.dspaceobjecttype, ");
+        sql.append("CAST(e.userid AS VARCHAR) AS userid, ");
+        sql.append("CAST(e.dspaceobjectid AS VARCHAR) AS dspaceobjectid ");
+        sql.append("FROM public.event e ");
+        sql.append("WHERE 1=1 ");
+
+        // Add date filter if applicable
+        if (hasDateFilter) {
+            sql.append("AND e.action_date BETWEEN :startDate AND :endDate ");
+        }
+
+        // Add user filter if applicable
+        if (hasUserFilter) {
+            sql.append("AND e.userid = :userid ");
+        }
+
+        // Add action filter if applicable
+        if (hasActionFilter) {
+            sql.append("AND e.action = :action ");
+        }
+
+        sql.append("ORDER BY e.action_date DESC");
+
+        return sql.toString();
+    }
+
+
+
+    @Override
+    public int countfindAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user,Integer action) throws SQLException {
+        StringBuilder queryStringBuilder = new StringBuilder("select count(*) from public.event e where 1=1");
+        if (startDate != null && endDate != null) {
+            queryStringBuilder.append(" and (e.action_date between '"+startDate+"' and '"+endDate+" 23:23:59') ");
+        }
+        if (user != null&&user.getID()!=null) {
+            queryStringBuilder.append("and e.userid='"+user.getID()+"'");
+        }
+        if(action!=null) {
+            queryStringBuilder.append("and  e.action ='"+action+"'");
+        }
+        System.out.println("sql count:::"+queryStringBuilder.toString());
+        return Integer.parseInt(createSQLQuery(context, queryStringBuilder.toString()).uniqueResult().toString());
     }
 
 }

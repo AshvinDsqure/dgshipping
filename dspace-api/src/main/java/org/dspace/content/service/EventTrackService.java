@@ -7,12 +7,14 @@
  */
 package org.dspace.content.service;
 
+import java.sql.SQLException;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 import org.dspace.content.*;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
 import org.hibernate.Query;
 
 /**
@@ -100,8 +102,6 @@ public interface EventTrackService extends DSpaceObjectService<Event>, DSpaceObj
     public List<Object[]> getcitycountryBycommunity(Context cntxt, String Query, String country, String GroupBy) throws Exception ;
     public List<Object[]> getcountryByCollection(Context cntxt, String Query, String GroupBy) throws Exception ;
     public List<Object[]> getcitycountryByCollection(Context cntxt, String Query, String country, String GroupBy) throws Exception ;
-    
-    
-    
-    
+    public List<Object[]> findAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user, Integer action) throws SQLException;
+    public int countfindAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user,Integer action) throws SQLException;
 }

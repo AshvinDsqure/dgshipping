@@ -58,10 +58,13 @@ public class Event implements Serializable {
      * Event (Action) types
      */
     public static final int CREATE = 1 << 0; // create new object
+    public static final int VIEW = 1 << 8; // destroy object
 
     public static final int MODIFY = 1 << 1; // modify object
 
     public static final int MODIFY_METADATA = 1 << 2; // modify object
+
+    public static final int DOWNLOAD = 1 << 12; // destroy object
 
     public static final int ADD = 1 << 3; // add content to container
 
@@ -70,6 +73,11 @@ public class Event implements Serializable {
     public static final int DELETE = 1 << 5; // destroy object
 
     public static final int INSTALL = 1 << 6; // object exits workspace/flow
+    public static final int SEARCH = 1 << 10; // object exits workspace/flow
+
+    public static final int LOGIN = 1 << 11; // object exits workspace/flow
+
+    public static final int UNLOGIN = 2049; // object exits workspace/flow
 
     /**
      * Index of filter parts in their array:

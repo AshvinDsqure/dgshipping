@@ -76,6 +76,9 @@ public interface ResourcePolicyService extends DSpaceCRUDService<ResourcePolicy>
 
     public void removePolicies(Context c, DSpaceObject o, String type) throws SQLException, AuthorizeException;
 
+
+    public void removePolicies(Context c, DSpaceObject o, String type, int action)
+            throws SQLException, AuthorizeException;
     public void removeDsoGroupPolicies(Context context, DSpaceObject dso, Group group)
         throws SQLException, AuthorizeException;
 
@@ -263,5 +266,6 @@ public interface ResourcePolicyService extends DSpaceCRUDService<ResourcePolicy>
      * @throws SQLException     if database error
      */
     public boolean isMyResourcePolicy(Context context, EPerson eperson, Integer id) throws SQLException;
+    public ResourcePolicy create(Context context, EPerson eperson, Group group) throws SQLException, AuthorizeException;
 
 }

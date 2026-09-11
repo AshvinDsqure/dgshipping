@@ -58,7 +58,7 @@ public class Constants {
     public static final int SEARCH = 8;
     public static final int NOTE = 9;
     public static final int TAPAL = 10;
-
+    public static final int LOGIN = 11;
     /**
      * lets you look up type names from the type IDs
      */

@@ -416,9 +416,14 @@ public abstract class JWTTokenHandler {
 
             // Always regenerate the session salt to enforce single-session-per-user
             // This invalidates any previous sessions when the user logs in again
-            log.debug("Regenerating auth token to enforce single-session-per-user");
-            ePerson.setSessionSalt(generateRandomKey());
-            ePersonService.update(context, ePerson);
+            if (StringUtils.isBlank(ePerson.getSessionSalt())
+                    || previousLoginDate == null
+                    || (ePerson.getLastActive().getTime() - previousLoginDate.getTime() > getExpirationPeriod())) {
+                log.debug("Regenerating auth token as session salt was either empty or expired..");
+                //System.out.println("::::::::::::Regenerating auth token as session salt was either empty or expired..");
+                ePerson.setSessionSalt(generateRandomKey());
+                ePersonService.update(context, ePerson);
+            }
 
         } catch (AuthorizeException e) {
             ePerson = null;

@@ -52,8 +52,8 @@ public class WorkflowProcessNoteConverter extends DSpaceObjectConverter<Workflow
         try {
             if (obj.getWorkflowProcessReferenceDocs() != null) {
                 rest.setWorkflowProcessReferenceDocRests(obj.getWorkflowProcessReferenceDocs().stream().map(d -> {
-                    WorkflowProcessReferenceDocRest restdoc= workflowProcessReferenceDocConverter.convert(d, projection);
-                    WorkFlowProcessRest workFlowProcessRest=new WorkFlowProcessRest();
+                    WorkflowProcessReferenceDocRest restdoc = workflowProcessReferenceDocConverter.convert(d, projection);
+                    WorkFlowProcessRest workFlowProcessRest = new WorkFlowProcessRest();
                     workFlowProcessRest.setUuid(d.getWorkflowProcess().getID().toString());
                     restdoc.setWorkFlowProcessRest(workFlowProcessRest);
                     return restdoc;
@@ -62,16 +62,58 @@ public class WorkflowProcessNoteConverter extends DSpaceObjectConverter<Workflow
             if (obj.getDescription() != null) {
                 rest.setDescription(obj.getDescription());
             }
-            if(obj.getSubject()!=null) {
+            if (obj.getSubject() != null) {
                 rest.setSubject(obj.getSubject());
             }
-            if(obj.getInitDate()!=null){
+            if (obj.getInitDate() != null) {
                 rest.setInitDate(obj.getInitDate());
             }
             rest.setUuid(obj.getID().toString());
-            if(obj.getSubmitter()!=null) {
+            if (obj.getSubmitter() != null) {
                 rest.setSubmitter(ePersonConverter.convert(ePersonConverter.convert(obj.getSubmitter(), projection)));
-                if(obj.getSubmitter().getFullName()!=null){
+                if (obj.getSubmitter().getFullName() != null) {
+                    rest.setFullName(obj.getSubmitter().getFullName());
+                }
+            }
+            return rest;
+        } catch (Exception e) {
+            System.out.println("error");
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+
+    public WorkflowProcessNoteRest convertBYAPPROVAL(WorkflowProcessNote obj, Projection projection) {
+        WorkflowProcessNoteRest rest = super.convert(obj, projection);
+        try {
+
+            if (obj.getWorkflowProcessReferenceDocs() != null) {
+                rest.setWorkflowProcessReferenceDocRests(obj.getWorkflowProcessReferenceDocs().stream().map(d -> {
+                    WorkflowProcessReferenceDocRest restdoc = workflowProcessReferenceDocConverter.convert(d, projection);
+                    WorkFlowProcessRest workFlowProcessRest = new WorkFlowProcessRest();
+                    workFlowProcessRest.setUuid(d.getWorkflowProcess().getID().toString());
+                    if(rest.getWorkflowProcessRest()==null){
+                        rest.setWorkflowProcessRest(workFlowProcessRest);
+                    }
+                    restdoc.setWorkFlowProcessRest(workFlowProcessRest);
+                    return restdoc;
+                }).collect(Collectors.toList()));
+            }
+
+            if (obj.getDescription() != null) {
+                rest.setDescription(obj.getDescription());
+            }
+            if (obj.getSubject() != null) {
+                rest.setSubject(obj.getSubject());
+            }
+            if (obj.getInitDate() != null) {
+                rest.setInitDate(obj.getInitDate());
+            }
+            rest.setUuid(obj.getID().toString());
+            if (obj.getSubmitter() != null) {
+                rest.setSubmitter(ePersonConverter.convert(ePersonConverter.convert(obj.getSubmitter(), projection)));
+                if (obj.getSubmitter().getFullName() != null) {
                     rest.setFullName(obj.getSubmitter().getFullName());
                 }
             }

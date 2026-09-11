@@ -172,7 +172,10 @@ public class BitstreamServiceImpl extends DSpaceObjectServiceImpl<Bitstream> imp
         Bitstream b = create1(context, is,bitstream);
         return b;
     }
-
+    @Override
+    public UUID findItemByBistream(Context context, Bitstream bitstream) throws SQLException {
+        return bitstreamDAO.findItemByBistream(context,bitstream);
+    }
     @Override
     public Bitstream register(Context context, Bundle bundle, int assetstore, String bitstreamPath)
         throws IOException, SQLException, AuthorizeException {
