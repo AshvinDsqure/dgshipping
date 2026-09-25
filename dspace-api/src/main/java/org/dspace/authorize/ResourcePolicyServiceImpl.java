@@ -22,6 +22,7 @@ import org.dspace.authorize.dao.ResourcePolicyDAO;
 import org.dspace.authorize.service.ResourcePolicyService;
 import org.dspace.content.DSpaceObject;
 import org.dspace.content.factory.ContentServiceFactory;
+import org.dspace.content.service.DSpaceObjectService;
 import org.dspace.core.Constants;
 import org.dspace.core.Context;
 import org.dspace.eperson.EPerson;
@@ -157,8 +158,18 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
         context.turnOffAuthorisationSystem();
         if (resourcePolicy.getdSpaceObject() != null) {
             //A policy for a DSpace Object has been modified, fire a modify event on the DSpace object
-            contentServiceFactory.getDSpaceObjectService(resourcePolicy.getdSpaceObject())
-                    .updateLastModified(context, resourcePolicy.getdSpaceObject());
+            //The dSpaceObject held by the resourcePolicy is a lazy Hibernate proxy over the generic
+            //DSpaceObject type (polymorphic @ManyToOne). Passing it directly to the typed
+            //updateLastModified(...) method throws a ClassCastException as the proxy cannot be cast to
+            //the concrete type (e.g. Community). Re-fetch it through its service to obtain a properly
+            //typed and initialized instance.
+            DSpaceObject dSpaceObject = resourcePolicy.getdSpaceObject();
+            DSpaceObjectService<DSpaceObject> dSpaceObjectService =
+                    contentServiceFactory.getDSpaceObjectService(dSpaceObject);
+            DSpaceObject resolved = dSpaceObjectService.find(context, dSpaceObject.getID());
+            if (resolved != null) {
+                dSpaceObjectService.updateLastModified(context, resolved);
+            }
         }
         context.restoreAuthSystemState();
     }
@@ -337,7 +348,15 @@ public class ResourcePolicyServiceImpl implements ResourcePolicyService {
             context.turnOffAuthorisationSystem();
             for (DSpaceObject dSpaceObject : relatedDSpaceObjects) {
                 //A policy for a DSpace Object has been modified, fire a modify event on the DSpace object
-                contentServiceFactory.getDSpaceObjectService(dSpaceObject).updateLastModified(context, dSpaceObject);
+                //Re-fetch the DSpaceObject through its service to avoid a ClassCastException when the
+                //typed updateLastModified(...) method tries to cast the lazy DSpaceObject proxy to the
+                //concrete type (e.g. Community).
+                DSpaceObjectService<DSpaceObject> dSpaceObjectService =
+                        contentServiceFactory.getDSpaceObjectService(dSpaceObject);
+                DSpaceObject resolved = dSpaceObjectService.find(context, dSpaceObject.getID());
+                if (resolved != null) {
+                    dSpaceObjectService.updateLastModified(context, resolved);
+                }
             }
             context.restoreAuthSystemState();
         }

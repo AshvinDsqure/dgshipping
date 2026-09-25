@@ -14,6 +14,8 @@ import org.dspace.content.DSpaceObject;
 import org.dspace.content.factory.ContentServiceFactory;
 import org.dspace.content.service.DSpaceObjectService;
 import org.dspace.core.Context;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +27,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DSpaceObjectUtils {
+
+    private static final Logger log = LoggerFactory.getLogger(DSpaceObjectUtils.class);
 
     @Autowired
     private ContentServiceFactory contentServiceFactory;
@@ -44,9 +48,17 @@ public class DSpaceObjectUtils {
     public DSpaceObject findDSpaceObject(Context context, UUID uuid) throws SQLException {
         for (DSpaceObjectService<? extends DSpaceObject> dSpaceObjectService :
                               contentServiceFactory.getDSpaceObjectServices()) {
-            DSpaceObject dso = dSpaceObjectService.find(context, uuid);
-            if (dso != null) {
-                return dso;
+            try {
+                DSpaceObject dso = dSpaceObjectService.find(context, uuid);
+                if (dso != null) {
+                    return dso;
+                }
+            } catch (SQLException e) {
+                // This customized installation has many custom DSpaceObject services. If one of
+                // them fails to look up the uuid (e.g. due to mapping/data issues on an unrelated
+                // custom type), we must not let it abort the entire lookup for the other services.
+                log.warn("Error looking up DSpaceObject (uuid={}) via service {}: {}",
+                         uuid, dSpaceObjectService.getClass().getSimpleName(), e.getMessage());
             }
         }
         return null;

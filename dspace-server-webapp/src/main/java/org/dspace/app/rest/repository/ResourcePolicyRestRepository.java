@@ -53,7 +53,7 @@ import org.springframework.stereotype.Component;
  */
 @Component(ResourcePolicyRest.CATEGORY + "." + ResourcePolicyRest.NAME)
 public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourcePolicyRest, Integer>
-                                          implements InitializingBean {
+        implements InitializingBean {
 
     @Autowired
     ResourcePolicyService resourcePolicyService;
@@ -123,13 +123,13 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
             if (action != null) {
                 int actionId = Constants.getActionID(action);
                 resourcePolisies = resourcePolicyService.findByResouceUuidAndActionId(context, resourceUuid, actionId,
-                    Math.toIntExact(pageable.getOffset()),
-                    Math.toIntExact(pageable.getPageSize()));
+                        Math.toIntExact(pageable.getOffset()),
+                        Math.toIntExact(pageable.getPageSize()));
                 total = resourcePolicyService.countByResouceUuidAndActionId(context, resourceUuid, actionId);
             } else {
                 resourcePolisies = resourcePolicyService.findByResouceUuid(context, resourceUuid,
-                    Math.toIntExact(pageable.getOffset()),
-                    Math.toIntExact(pageable.getPageSize()));
+                        Math.toIntExact(pageable.getOffset()),
+                        Math.toIntExact(pageable.getPageSize()));
                 total = resourcePolicyService.countByResourceUuid(context, resourceUuid);
             }
         } catch (SQLException e) {
@@ -162,14 +162,14 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
             }
             if (resourceUuid != null) {
                 resourcePolisies = resourcePolicyService.findByEPersonAndResourceUuid(context, eperson, resourceUuid,
-                    Math.toIntExact(pageable.getOffset()),
-                    Math.toIntExact(pageable.getPageSize()));
+                        Math.toIntExact(pageable.getOffset()),
+                        Math.toIntExact(pageable.getPageSize()));
                 total = resourcePolicyService.countResourcePoliciesByEPersonAndResourceUuid(context,
-                    eperson, resourceUuid);
+                        eperson, resourceUuid);
             } else {
                 resourcePolisies = resourcePolicyService.findByEPerson(context, eperson,
-                    Math.toIntExact(pageable.getOffset()),
-                    Math.toIntExact(pageable.getPageSize()));
+                        Math.toIntExact(pageable.getOffset()),
+                        Math.toIntExact(pageable.getPageSize()));
                 total = resourcePolicyService.countByEPerson(context, eperson);
             }
         } catch (SQLException e) {
@@ -205,13 +205,13 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
             }
             if (resourceUuid != null) {
                 resourcePolisies = resourcePolicyService.findByGroupAndResourceUuid(context, group, resourceUuid,
-                    Math.toIntExact(pageable.getOffset()),
-                    Math.toIntExact(pageable.getPageSize()));
+                        Math.toIntExact(pageable.getOffset()),
+                        Math.toIntExact(pageable.getPageSize()));
                 total = resourcePolicyService.countByGroupAndResourceUuid(context, group, resourceUuid);
             } else {
                 resourcePolisies = resourcePolicyService.findByGroup(context, group,
-                    Math.toIntExact(pageable.getOffset()),
-                    Math.toIntExact(pageable.getPageSize()));
+                        Math.toIntExact(pageable.getOffset()),
+                        Math.toIntExact(pageable.getPageSize()));
                 total = resourcePolicyService.countResourcePolicyByGroup(context, group);
             }
 
@@ -224,8 +224,6 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
     @Override
     @PreAuthorize("hasAuthority('ADMIN')")
     protected ResourcePolicyRest createAndReturn(Context context) throws AuthorizeException, SQLException {
-
-    try {
 
         String resourceUuidStr = getRequestService().getCurrentRequest().getServletRequest().getParameter("resource");
         String epersonUuidStr = getRequestService().getCurrentRequest().getServletRequest().getParameter("eperson");
@@ -296,10 +294,7 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
         } else {
             throw new UnprocessableEntityException("A resource policy must contain a valid eperson or group");
         }
-    }catch (Exception e){
-        e.printStackTrace();
-        throw new RuntimeException(e.getMessage(), e);
-    }
+
     }
 
     @Override
@@ -310,7 +305,7 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
             resourcePolicy = resourcePolicyService.find(context, id);
             if (resourcePolicy == null) {
                 throw new ResourceNotFoundException(
-                    ResourcePolicyRest.CATEGORY + "." + ResourcePolicyRest.NAME + " with id: " + id + " not found");
+                        ResourcePolicyRest.CATEGORY + "." + ResourcePolicyRest.NAME + " with id: " + id + " not found");
             }
             resourcePolicyService.delete(context, resourcePolicy);
         } catch (SQLException e) {
@@ -325,7 +320,7 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
         ResourcePolicy resourcePolicy = resourcePolicyService.find(context, id);
         if (resourcePolicy == null) {
             throw new ResourceNotFoundException(
-                ResourcePolicyRest.CATEGORY + "." + ResourcePolicyRest.NAME + " with id: " + id + " not found");
+                    ResourcePolicyRest.CATEGORY + "." + ResourcePolicyRest.NAME + " with id: " + id + " not found");
         }
         resourcePatch.patch(obtainContext(), resourcePolicy, patch.getOperations());
         resourcePolicyService.update(context, resourcePolicy);
@@ -334,7 +329,7 @@ public class ResourcePolicyRestRepository extends DSpaceRestRepository<ResourceP
     @Override
     public void afterPropertiesSet() throws Exception {
         discoverableEndpointsService.register(this, Arrays.asList(
-                      Link.of("/api/" + ResourcePolicyRest.CATEGORY + "/" + ResourcePolicyRest.PLURAL_NAME + "/search",
-                                         ResourcePolicyRest.PLURAL_NAME + "-search")));
+                Link.of("/api/" + ResourcePolicyRest.CATEGORY + "/" + ResourcePolicyRest.PLURAL_NAME + "/search",
+                        ResourcePolicyRest.PLURAL_NAME + "-search")));
     }
 }

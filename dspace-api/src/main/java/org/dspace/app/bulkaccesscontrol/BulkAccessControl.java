@@ -63,8 +63,10 @@ import org.dspace.discovery.SearchServiceException;
 import org.dspace.discovery.SearchUtils;
 import org.dspace.discovery.indexobject.IndexableItem;
 import org.dspace.eperson.EPerson;
+import org.dspace.eperson.Group;
 import org.dspace.eperson.factory.EPersonServiceFactory;
 import org.dspace.eperson.service.EPersonService;
+import org.dspace.eperson.service.GroupService;
 import org.dspace.scripts.DSpaceRunnable;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.factory.DSpaceServicesFactory;
@@ -98,6 +100,8 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
 
     protected EPersonService epersonService;
 
+    protected GroupService groupService;
+
     private ConfigurationService configurationService;
 
     private MediaFilterService mediaFilterService;
@@ -122,6 +126,7 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
         this.itemService = ContentServiceFactory.getInstance().getItemService();
         this.resourcePolicyService = AuthorizeServiceFactory.getInstance().getResourcePolicyService();
         this.epersonService = EPersonServiceFactory.getInstance().getEPersonService();
+        this.groupService = EPersonServiceFactory.getInstance().getGroupService();
         this.configurationService = DSpaceServicesFactory.getInstance().getConfigurationService();
         mediaFilterService = MediaFilterServiceFactory.getInstance().getMediaFilterService();
         this.authorizeService=AuthorizeServiceFactory.getInstance().getAuthorizeService();
@@ -181,9 +186,13 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
             accessControl = mapper.readValue(inputStream, BulkAccessControlInput.class);
             DSpaceObject dso =
                     dSpaceObjectUtils.findDSpaceObject(context, UUID.fromString(uuids.get(0)));
+
             List<ResourcePolicy> filteredPolicies = dso.getResourcePolicies().stream()
                     .filter(d -> d.getAction() == Constants.DEFAULT_ITEM_READ ||  d.getAction() == Constants.DEFAULT_BITSTREAM_READ)
                     .collect(Collectors.toList());
+
+            System.out.println("filteredPolicies size >>>>>>>>>>>"+filteredPolicies.size());
+
             updatebitstreaorItemPolicy(filteredPolicies,accessControl);
             /*dso.getResourcePolicies().get(0);
             dso.getResourcePolicies().forEach(d->{
@@ -358,11 +367,12 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
             handler.handleException(e);
         }
     }
-    public void updateItemPolicies(ResourcePolicy resourcePolicy,DSpaceObject dso,String accessControlMode){
+    public void     updateItemPolicies(ResourcePolicy resourcePolicy,DSpaceObject dso,String accessControlMode){
 
         if (REPLACE_MODE.equals(accessControlMode)) {
             try {
-                removeAllPolicies(dso);
+                removeReadPolicies(dso, TYPE_CUSTOM);
+                removeReadPolicies(dso, TYPE_INHERITED);
             }catch (Exception e){
                 e.printStackTrace();
             }
@@ -370,7 +380,29 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
         }
         if (Objects.nonNull(resourcePolicy)) {
             try {
-                authorizeService.createResourcePolicy(context, dso, resourcePolicy.getGroup(), resourcePolicy.getEPerson(),Constants.READ, resourcePolicy.getRpType(),
+                if (ADD_MODE.equals(accessControlMode)) {
+                    Group group = resourcePolicy.getGroup();
+                    EPerson eperson = resourcePolicy.getEPerson();
+                    if (group != null && authorizeService
+                            .isAnIdenticalPolicyAlreadyInPlace(context, dso, group, Constants.READ, -1)) {
+                        logInfoDso(accessControlMode, dso);
+                        return;
+                    }
+                    if (eperson != null) {
+                        List<ResourcePolicy> existingPolicies = authorizeService
+                                .getPoliciesActionFilter(context, dso, Constants.READ);
+                        boolean duplicate = existingPolicies.stream()
+                                .anyMatch(rp -> eperson.equals(rp.getEPerson()));
+                        if (duplicate) {
+                            logInfoDso(accessControlMode, dso);
+                            return;
+                        }
+                    }
+                }
+                if(resourcePolicy.getEPerson()!=null&&resourcePolicy.getEPerson().getEmail()!=null) {
+                    System.out.println("EP___________>"+resourcePolicy.getEPerson().getEmail());
+                }
+                authorizeService.createResourcePolicy(context, dso, resourcePolicy.getGroup(), resourcePolicy.getEPerson(),Constants.READ, ResourcePolicy.TYPE_CUSTOM,
                         resourcePolicy.getRpName(), resourcePolicy.getRpDescription(), resourcePolicy.getStartDate(), resourcePolicy.getEndDate());
                 logInfoDso(accessControlMode,dso);
             } catch (Exception e) {
@@ -386,6 +418,7 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
         int limit = 20;
         String query = buildSolrQuery(uuids);
         List<Item> itemIterator = findItemsList(query, start, limit);
+
         itemIterator.stream().forEach(item->{
             AccessConditionItem accessConditionItem=  accessControl.getItem();
             if (Objects.nonNull(accessConditionItem)) {
@@ -650,7 +683,6 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
             removeReadPolicies(bitstream, TYPE_CUSTOM);
             removeReadPolicies(bitstream, TYPE_INHERITED);
         }
-
         try {
             setBitstreamPolicies(bitstream, item, accessControl);
             logInfo(acBitstream.getAccessConditions(), acBitstream.getMode(), bitstream);
@@ -725,6 +757,11 @@ public class BulkAccessControl extends DSpaceRunnable<BulkAccessControlScriptCon
         Date endDate = accessCondition.getEndDate();
 
         try {
+            Group group = groupService.findByName(context, accessConditionOption.getGroupName());
+            if (group != null && authorizeService
+                    .isAnIdenticalPolicyAlreadyInPlace(context, obj, group, Constants.READ, -1)) {
+                return;
+            }
             accessConditionOption.createResourcePolicy(context, obj, name, description, startDate, endDate);
         } catch (Exception e) {
             throw new BulkAccessControlException(e);

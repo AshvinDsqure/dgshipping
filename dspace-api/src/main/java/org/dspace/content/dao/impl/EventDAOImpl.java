@@ -714,7 +714,7 @@ public class EventDAOImpl extends AbstractHibernateDSODAO<Event> implements Even
 
         } catch (Exception e) {
             e.printStackTrace();
-            return null;
+            return new java.util.ArrayList<>();
         }
     }
     private String buildFindAllByCurrentDateQuery(boolean hasDateFilter, boolean hasUserFilter, boolean hasActionFilter) {
@@ -754,18 +754,39 @@ public class EventDAOImpl extends AbstractHibernateDSODAO<Event> implements Even
 
     @Override
     public int countfindAllByCurrentDate(Context context, Integer limit, Integer offset, Date startDate, Date endDate, EPerson user,Integer action) throws SQLException {
-        StringBuilder queryStringBuilder = new StringBuilder("select count(*) from public.event e where 1=1");
+        StringBuilder queryStringBuilder = new StringBuilder("select count(*) from public.event e where 1=1 ");
         if (startDate != null && endDate != null) {
-            queryStringBuilder.append(" and (e.action_date between '"+startDate+"' and '"+endDate+" 23:23:59') ");
+            queryStringBuilder.append(" and (e.action_date between :startDate and :endDate) ");
         }
-        if (user != null&&user.getID()!=null) {
-            queryStringBuilder.append("and e.userid='"+user.getID()+"'");
+        if (user != null && user.getID() != null) {
+            queryStringBuilder.append(" and e.userid = :userid ");
         }
-        if(action!=null) {
-            queryStringBuilder.append("and  e.action ='"+action+"'");
+        if (action != null) {
+            queryStringBuilder.append(" and e.action = :action ");
         }
-        System.out.println("sql count:::"+queryStringBuilder.toString());
-        return Integer.parseInt(createSQLQuery(context, queryStringBuilder.toString()).uniqueResult().toString());
+
+        Query query = createSQLQuery(context, queryStringBuilder.toString());
+
+        if (startDate != null && endDate != null) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(endDate);
+            calendar.set(Calendar.HOUR_OF_DAY, 23);
+            calendar.set(Calendar.MINUTE, 59);
+            calendar.set(Calendar.SECOND, 59);
+            calendar.set(Calendar.MILLISECOND, 999);
+            Date finalEndDate = calendar.getTime();
+
+            query.setParameter("startDate", startDate);
+            query.setParameter("endDate", finalEndDate);
+        }
+        if (user != null && user.getID() != null) {
+            query.setParameter("userid", user.getID());
+        }
+        if (action != null) {
+            query.setParameter("action", action);
+        }
+
+        return Integer.parseInt(query.uniqueResult().toString());
     }
 
 }

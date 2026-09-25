@@ -25,6 +25,7 @@ import org.dspace.disseminate.service.CitationDocumentService;
 import org.dspace.eperson.EPerson;
 import org.dspace.eperson.factory.EPersonServiceFactory;
 import org.dspace.eperson.service.EPersonService;
+import org.dspace.services.RequestService;
 import org.dspace.utils.DSpace;
 import org.springframework.core.io.AbstractResource;
 
@@ -46,11 +47,13 @@ public class BitstreamResource extends AbstractResource {
     private BitstreamService bitstreamService = ContentServiceFactory.getInstance().getBitstreamService();
     private EPersonService ePersonService = EPersonServiceFactory.getInstance().getEPersonService();
     private CitationDocumentService citationDocumentService =
-        new DSpace().getServiceManager()
+            new DSpace().getServiceManager()
                     .getServicesByType(CitationDocumentService.class).get(0);
+    private RequestService requestService =
+            new DSpace().getServiceManager().getServiceByName(RequestService.class.getName(), RequestService.class);
 
     public BitstreamResource(String name, UUID uuid, UUID currentUserUUID, Set<UUID> currentSpecialGroups,
-        boolean shouldGenerateCoverPage) {
+                             boolean shouldGenerateCoverPage) {
         this.name = name;
         this.uuid = uuid;
         this.currentUserUUID = currentUserUUID;
@@ -67,7 +70,7 @@ public class BitstreamResource extends AbstractResource {
      * @return a byte array containing the cover page
      */
     private byte[] getCoverpageByteArray(Context context, Bitstream bitstream)
-        throws IOException, SQLException, AuthorizeException {
+            throws IOException, SQLException, AuthorizeException {
         if (file == null) {
             try {
                 Pair<byte[], Long> citedDocument = citationDocumentService.makeCitedDocument(context, bitstream);
@@ -126,8 +129,29 @@ public class BitstreamResource extends AbstractResource {
 
     private Context initializeContext() throws SQLException {
         Context context = new Context();
-        EPerson currentUser = ePersonService.find(context, currentUserUUID);
-        context.setCurrentUser(currentUser);
+        EPerson currentUser = null;
+        if (currentUserUUID != null) {
+            currentUser = ePersonService.find(context, currentUserUUID);
+        }
+        if (currentUser == null && requestService != null) {
+            String currentUserId = requestService.getCurrentUserId();
+            if (currentUserId != null && !"null".equals(currentUserId)) {
+                try {
+                    currentUser = ePersonService.find(context, UUID.fromString(currentUserId));
+                } catch (IllegalArgumentException e) {
+                    // invalid UUID string, ignore
+                }
+            }
+        }
+        if (currentUser != null) {
+            context.setCurrentUser(currentUser);
+        } else {
+            // No user could be recovered. Authorization was already verified
+            // by @PreAuthorize on the controller method, so turn off the
+            // authorization system to avoid a redundant check failing with
+            // "by user null" in bitstreamService.retrieve().
+            context.turnOffAuthorisationSystem();
+        }
         currentSpecialGroups.forEach(context::setSpecialGroup);
         return context;
     }

@@ -17,6 +17,8 @@ import org.dspace.app.rest.utils.DSpaceObjectUtils;
 import org.dspace.authorize.service.AuthorizeService;
 import org.dspace.content.DSpaceObject;
 import org.dspace.core.Context;
+import org.dspace.eperson.EPerson;
+import org.dspace.eperson.service.EPersonService;
 import org.dspace.services.RequestService;
 import org.dspace.services.model.Request;
 import org.slf4j.Logger;
@@ -45,6 +47,9 @@ public class DSpaceObjectAdminPermissionEvaluatorPlugin extends RestObjectPermis
     @Autowired
     private DSpaceObjectUtils dspaceObjectUtil;
 
+    @Autowired
+    private EPersonService ePersonService;
+
     @Override
     public boolean hasDSpacePermission(Authentication authentication, Serializable targetId, String targetType,
             DSpaceRestPermission permission) {
@@ -60,8 +65,29 @@ public class DSpaceObjectAdminPermissionEvaluatorPlugin extends RestObjectPermis
         Context context = ContextUtil.obtainContext(request.getHttpServletRequest());
 
         try {
+            // Ensure the current user is set on the context. In this customized installation the
+            // context user may not always be populated by the time @PreAuthorize is evaluated
+            // (see the same fallback already present in AdminRestPermissionEvaluatorPlugin).
+            if (context.getCurrentUser() == null) {
+                String currentUserId = requestService.getCurrentUserId();
+                if (currentUserId != null && !"null".equals(currentUserId)) {
+                    try {
+                        EPerson ePerson = ePersonService.find(context, UUID.fromString(currentUserId));
+                        if (ePerson != null) {
+                            context.setCurrentUser(ePerson);
+                        }
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Invalid EPerson ID in request service: {}", currentUserId);
+                    }
+                }
+            }
+
             UUID dsoUuid = UUID.fromString(targetId.toString());
             DSpaceObject dso = dspaceObjectUtil.findDSpaceObject(context, dsoUuid);
+            if (dso == null) {
+                log.warn("DSpaceObject with uuid {} not found while evaluating ADMIN permission", dsoUuid);
+                return false;
+            }
             return authorizeService.isAdmin(context, dso);
         } catch (SQLException e) {
             log.error(e.getMessage(), e);

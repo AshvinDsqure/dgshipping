@@ -39,9 +39,11 @@ import org.dspace.content.service.*;
 import org.dspace.core.Context;
 import org.dspace.disseminate.service.CitationDocumentService;
 import org.dspace.eperson.EPerson;
+import org.dspace.eperson.service.EPersonService;
 import org.dspace.event.Event;
 import org.dspace.services.ConfigurationService;
 import org.dspace.services.EventService;
+import org.dspace.services.RequestService;
 import org.dspace.usage.UsageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
@@ -114,7 +116,14 @@ public class BitstreamRestController {
     @Autowired
     Utils utils;
 
-    @PreAuthorize("hasPermission(#uuid, 'NOTE', 'READ') || hasPermission(#uuid, 'BITSTREAM', 'READ') || hasPermission(#uuid, 'ITEAM', 'WRITE') || hasPermission(#uuid, 'BITSTREAM','WRITE') || hasPermission(#uuid, 'COLLECTION', 'READ')")
+
+    @Autowired
+    private RequestService requestService;
+
+    @Autowired
+    private EPersonService ePersonService;
+
+    @PreAuthorize("hasPermission(#uuid, 'BITSTREAM', 'READ') || hasPermission(#uuid, 'ITEM', 'READ')")
     @RequestMapping(method = {RequestMethod.GET, RequestMethod.HEAD}, value = "content")
     public ResponseEntity retrieve(@PathVariable UUID uuid, HttpServletResponse response,
                                    HttpServletRequest request) throws IOException, SQLException, AuthorizeException {
@@ -126,6 +135,20 @@ public class BitstreamRestController {
         context.turnOffAuthorisationSystem();
         Bitstream bit = bitstreamService.find(context, uuid);
         EPerson currentUser = context.getCurrentUser();
+
+        if (currentUser == null) {
+            String currentUserId = requestService.getCurrentUserId();
+            if (currentUserId != null && !"null".equals(currentUserId)) {
+                try {
+                    currentUser = ePersonService.find(context, UUID.fromString(currentUserId));
+                    if (currentUser != null) {
+                        context.setCurrentUser(currentUser);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid EPerson ID in request service: {}", currentUserId);
+                }
+            }
+        }
 
         if (bit == null) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND);

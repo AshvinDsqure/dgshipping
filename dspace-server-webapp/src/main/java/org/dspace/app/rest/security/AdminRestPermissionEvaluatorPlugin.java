@@ -9,6 +9,7 @@ package org.dspace.app.rest.security;
 
 import java.io.Serializable;
 import java.sql.SQLException;
+import java.util.UUID;
 
 import org.dspace.app.rest.utils.ContextUtil;
 import org.dspace.authorize.service.AuthorizeService;
@@ -21,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
 
 /**
@@ -48,12 +50,36 @@ public class AdminRestPermissionEvaluatorPlugin extends RestObjectPermissionEval
 
         //We do not check the "permission" object here because administrators are allowed to do everything
 
+        // If Spring Security Authentication has ADMIN authority, grant permission immediately.
+        // This works even when the DSpace Context doesn't have the user set, because the
+        // authorities were populated by StatelessAuthenticationFilter during authentication.
+        if (authentication != null && authentication.getAuthorities() != null) {
+            for (GrantedAuthority authority : authentication.getAuthorities()) {
+                if ("ADMIN".equals(authority.getAuthority())) {
+                    return true;
+                }
+            }
+        }
+
         Request request = requestService.getCurrentRequest();
         Context context = ContextUtil.obtainContext(request.getHttpServletRequest());
         EPerson ePerson = null;
 
         try {
             ePerson = context.getCurrentUser();
+            if (ePerson == null) {
+                String currentUserId = requestService.getCurrentUserId();
+                if (currentUserId != null && !"null".equals(currentUserId)) {
+                    try {
+                        ePerson = ePersonService.find(context, UUID.fromString(currentUserId));
+                        if (ePerson != null) {
+                            context.setCurrentUser(ePerson);
+                        }
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Invalid EPerson ID in request service: {}", currentUserId);
+                    }
+                }
+            }
             if (ePerson != null) {
 
                 //Check if user is a repository admin
